@@ -7,7 +7,7 @@
 #include <asm/apic.h>
 #include <linux/jiffies.h>
 
-#define INTERVAL 6
+#define INTERVAL 600
 
 struct task_struct *cpu_ipi_task;
 
