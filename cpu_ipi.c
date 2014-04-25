@@ -7,7 +7,6 @@
 
 
 static int __init cpu_ipi_init(void){
-	int total_cpus;
 	int attacker_cpu;
 	int victim_cpu;
 	
@@ -16,25 +15,28 @@ static int __init cpu_ipi_init(void){
 
 	printk("entering cpu_ipi module\n");
 
-	total_cpus = num_online_cpus();
-	printk("total_cpus: %d\n", total_cpus);
+//	total_cpus = num_online_cpus();
+//	printk("total_cpus: %d\n", total_cpus);
 
-	attacker_cpu = task_cpu(current);
-	printk("attacker_cpu: %d\n", attacker_cpu);
+//	attacker_cpu = task_cpu(current);
+//	printk("attacker_cpu: %d\n", attacker_cpu);
 
-	victim_cpu = (attacker_cpu + 1) % total_cpus;
-	printk("victim_cpu: %d\n", victim_cpu);	
+//	victim_cpu = (attacker_cpu + 1) % total_cpus;
+//	printk("victim_cpu: %d\n", victim_cpu);	
+
 	current_time = jiffies;
-	next_time = current_time + 10*HZ;
-	printk("current_time: %lu\n", current_time);	
-	printk("next_time: %lu\n", next_time);	
+	next_time = current_time + 600*HZ;
+	attacker_cpu = 0;
+	victim_cpu = 1;
+
+	set_cpus_allowed_ptr(current, get_cpu_mask(attacker_cpu));
+
 	while (time_before(jiffies, next_time)) {
-		mdelay(1000);
+//		mdelay(1000);
 		apic->send_IPI_mask(get_cpu_mask(victim_cpu), RESCHEDULE_VECTOR);
 	}
 
 
-//	set_cpus_allowed_ptr(current, get_cpu_mask(new_cpu));
 
 //	cur_cpu = task_cpu(current);
 //	printk("After migration, cur_cpu: %d\n", cur_cpu);
