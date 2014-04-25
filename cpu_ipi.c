@@ -5,44 +5,57 @@
 #include <asm/apic.h>
 #include <linux/jiffies.h>
 
+int cpu_exe(void *ptr){
+	int num = 0;
+	int exe_cpu = 1;
 
-static int __init cpu_ipi_init(void){
-	int attacker_cpu;
-	int victim_cpu;
-	
 	unsigned long current_time;
 	unsigned long next_time;
 
-	printk("entering cpu_ipi module\n");
-
-//	total_cpus = num_online_cpus();
-//	printk("total_cpus: %d\n", total_cpus);
-
-//	attacker_cpu = task_cpu(current);
-//	printk("attacker_cpu: %d\n", attacker_cpu);
-
-//	victim_cpu = (attacker_cpu + 1) % total_cpus;
-//	printk("victim_cpu: %d\n", victim_cpu);	
+	set_cpus_allowed_ptr(current, get_cpu_mask(exe_cpu));
 
 	current_time = jiffies;
-	next_time = current_time + 600*HZ;
-	attacker_cpu = 0;
-	victim_cpu = 1;
-
-	set_cpus_allowed_ptr(current, get_cpu_mask(attacker_cpu));
+	next_time = current_time + 60*HZ;
 
 	while (time_before(jiffies, next_time)) {
-//		mdelay(1000);
-		apic->send_IPI_mask(get_cpu_mask(victim_cpu), RESCHEDULE_VECTOR);
+		num ++;
+		num --;
 	}
 
+	printk("CPU EXECUTION DONE!\n");
+	return 0;
+}
 
+int cpu_ipi(void *ptr){
+	int send_cpu = 0;
+	int recv_cpu = 1;
 
-//	cur_cpu = task_cpu(current);
-//	printk("After migration, cur_cpu: %d\n", cur_cpu);
+	unsigned long current_time;
+	unsigned long next_time;
+
+	set_cpus_allowed_ptr(current, get_cpu_mask(send_cpu));
+
+	current_time = jiffies;
+	next_time = current_time + 60*HZ;
+
+	while (time_before(jiffies, next_time)) {
+		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
+	}
 	
+	printk("CPU INTERRUPTION DONE!\n");
+	return 0;
+}
 
-    return 0;
+
+static int __init cpu_ipi_init(void){
+
+	printk("entering cpu_ipi module\n");
+
+	kernel_thread(cpu_exe, NULL, 0);
+
+	kernel_thread(cpu_ipi, NULL, 0);
+
+	return 0;
 }
 
 static void __exit cpu_ipi_exit(void){
