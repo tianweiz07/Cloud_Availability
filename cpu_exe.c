@@ -8,8 +8,11 @@
 
 static int __init cpu_exe_init(void){
 	int num = 0;
+	int exe_cpu = 1;
 	
 	printk("entering cpu_exe module\n");
+
+	set_cpus_allowed_ptr(current, get_cpu_mask(exe_cpu));
 
 	while (1) {
 		num ++;
