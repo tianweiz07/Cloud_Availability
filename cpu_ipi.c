@@ -46,7 +46,6 @@ int cpu_ipi(void *ptr){
 	next_time = current_time + INTERVAL*HZ;
 
 	while (time_before(jiffies, next_time)) {
-		printk("%d\n", task_cpu(current));
 		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
 	}
 	
