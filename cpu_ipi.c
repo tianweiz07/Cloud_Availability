@@ -1,9 +1,16 @@
+#include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/cpumask.h>
 #include <linux/sched.h>
 #include <linux/delay.h>
 #include <asm/apic.h>
 #include <linux/jiffies.h>
+
+#define INTERVAL 6
+
+struct task_struct *cpu_exe_task;
+struct task_struct *cpu_ipi_task;
 
 int cpu_exe(void *ptr){
 	int num = 0;
@@ -15,7 +22,7 @@ int cpu_exe(void *ptr){
 	set_cpus_allowed_ptr(current, get_cpu_mask(exe_cpu));
 
 	current_time = jiffies;
-	next_time = current_time + 60*HZ;
+	next_time = current_time + INTERVAL*HZ;
 
 	while (time_before(jiffies, next_time)) {
 		num ++;
@@ -36,9 +43,10 @@ int cpu_ipi(void *ptr){
 	set_cpus_allowed_ptr(current, get_cpu_mask(send_cpu));
 
 	current_time = jiffies;
-	next_time = current_time + 60*HZ;
+	next_time = current_time + INTERVAL*HZ;
 
 	while (time_before(jiffies, next_time)) {
+		printk("%d\n", task_cpu(current));
 		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
 	}
 	
@@ -50,16 +58,17 @@ int cpu_ipi(void *ptr){
 static int __init cpu_ipi_init(void){
 
 	printk("entering cpu_ipi module\n");
-
-	kernel_thread(cpu_exe, NULL, 0);
-
-	kernel_thread(cpu_ipi, NULL, 0);
-
+	cpu_exe_task = kthread_run(&cpu_exe, NULL, "CPU EXECUTION");
+	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
 	return 0;
 }
 
 static void __exit cpu_ipi_exit(void){
-    printk("leaving cpu_ipi module\n");
+	printk("leaving cpu_ipi module\n");
+//	if (cpu_exe_task)
+//		kthread_stop(cpu_exe_task);
+//	if (cpu_ipi_task)
+//		kthread_stop(cpu_ipi_task);
 }
 
 module_init(cpu_ipi_init); 
