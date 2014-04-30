@@ -9,9 +9,20 @@
 
 #define INTERVAL 180
 #define SLICE 0.015
+#define FREQUENCY 3292606000
 
 struct task_struct *cpu_exe_task;
 struct task_struct *cpu_ipi_task;
+
+unsigned long GetCycle(void){
+	unsigned long higher, lower;
+	unsigned long counter;
+	__asm__ ("rdtsc":"=a"(lower), "=b"(higher));
+	counter = higher;
+	counter = (higher << 32) + lower;
+	return counter;
+}
+
 
 int cpu_exe(void *ptr){
 	unsigned long long credit = 0;
@@ -49,7 +60,7 @@ int cpu_ipi(void *ptr){
 	next_time = current_time + INTERVAL*HZ;
 
 	while (time_before(jiffies, next_time)) {
-		tsc = jiffies + SLICE*HZ;
+		tsc = GetCycle + (unsigned long)(SLICE*FREQUENCY);
 		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
 		while (time_before(jiffies, tsc));
 	}
@@ -62,17 +73,13 @@ int cpu_ipi(void *ptr){
 static int __init cpu_ipi_init(void){
 
 	printk("entering cpu_ipi module\n");
-	cpu_exe_task = kthread_run(&cpu_exe, NULL, "CPU EXECUTION");
+//	cpu_exe_task = kthread_run(&cpu_exe, NULL, "CPU EXECUTION");
 //	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
 	return 0;
 }
 
 static void __exit cpu_ipi_exit(void){
 	printk("leaving cpu_ipi module\n");
-//	if (cpu_exe_task)
-//		kthread_stop(cpu_exe_task);
-//	if (cpu_ipi_task)
-//		kthread_stop(cpu_ipi_task);
 }
 
 module_init(cpu_ipi_init); 
