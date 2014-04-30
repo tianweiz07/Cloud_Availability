@@ -7,6 +7,8 @@
 #include <linux/delay.h>
 #include <asm/apic.h>
 #include <linux/jiffies.h>
+#include <xen/events.h>
+#include <asm/xen/events.h>
 
 #define INTERVAL 180
 #define SLICE 15
@@ -25,7 +27,6 @@ __inline__ uint64_t rdtsc(void) {
 	return (d<<32) | a;
 }
 #endif
-
 
 int cpu_exe(void *ptr){
 	uint64_t credit = 0;
@@ -59,7 +60,8 @@ int cpu_ipi(void *ptr){
 
 	while (time_before(jiffies, next_time)) {
 		tsc = rdtsc() + SLICE*FREQUENCY;
-		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
+		xen_send_IPI_one(recv_cpu, XEN_CALL_FUNCTION_VECTOR);
+//		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
 		while (rdtsc() < tsc);
 	}
 	
