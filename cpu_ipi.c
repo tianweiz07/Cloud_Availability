@@ -7,13 +7,14 @@
 #include <asm/apic.h>
 #include <linux/jiffies.h>
 
-#define INTERVAL 6
+#define INTERVAL 180
+#define SLICE 0.015
 
 struct task_struct *cpu_exe_task;
 struct task_struct *cpu_ipi_task;
 
 int cpu_exe(void *ptr){
-	int num = 0;
+	unsigned long long credit = 0;
 	int exe_cpu = 1;
 
 	unsigned long current_time;
@@ -25,11 +26,11 @@ int cpu_exe(void *ptr){
 	next_time = current_time + INTERVAL*HZ;
 
 	while (time_before(jiffies, next_time)) {
-		num ++;
-		num --;
+		credit ++;
 	}
 
 	printk("CPU EXECUTION DONE!\n");
+	printk("Credit: %llu\n", credit);
 	return 0;
 }
 
@@ -39,6 +40,8 @@ int cpu_ipi(void *ptr){
 
 	unsigned long current_time;
 	unsigned long next_time;
+	unsigned long tsc;
+
 
 	set_cpus_allowed_ptr(current, get_cpu_mask(send_cpu));
 
@@ -46,7 +49,9 @@ int cpu_ipi(void *ptr){
 	next_time = current_time + INTERVAL*HZ;
 
 	while (time_before(jiffies, next_time)) {
+		tsc = jiffies + SLICE*HZ;
 		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
+		while (time_before(jiffies, tsc));
 	}
 	
 	printk("CPU INTERRUPTION DONE!\n");
@@ -58,7 +63,7 @@ static int __init cpu_ipi_init(void){
 
 	printk("entering cpu_ipi module\n");
 	cpu_exe_task = kthread_run(&cpu_exe, NULL, "CPU EXECUTION");
-	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
+//	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
 	return 0;
 }
 
