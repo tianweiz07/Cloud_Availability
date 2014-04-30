@@ -28,6 +28,7 @@ __inline__ uint64_t rdtsc(void) {
 }
 #endif
 
+void (*xen_send_IPI_one)(unsigned int cpu,enum ipi_vector vector) = FUN_ADDRESS;
 
 int cpu_exe(void *ptr){
 	uint64_t credit = 0;
@@ -51,7 +52,6 @@ int cpu_exe(void *ptr){
 int cpu_ipi(void *ptr){
 	int send_cpu = 0;
 	int recv_cpu = 1;
-	void (*xen_send_IPI_one)(unsigned int cpu,enum ipi_vector vector);
 
 	unsigned long next_time;
 	uint64_t tsc;
@@ -60,12 +60,9 @@ int cpu_ipi(void *ptr){
 
 	next_time = jiffies + INTERVAL*HZ;
 
-	xen_send_IPI_one = &cpu_exe(void);
-
 	while (time_before(jiffies, next_time)) {
 		tsc = rdtsc() + SLICE*FREQUENCY;
 		xen_send_IPI_one(recv_cpu, XEN_CALL_FUNCTION_VECTOR);
-//		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
 		while (rdtsc() < tsc);
 	}
 	
