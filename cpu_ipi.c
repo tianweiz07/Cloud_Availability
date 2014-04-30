@@ -7,12 +7,12 @@
 #include <linux/delay.h>
 #include <asm/apic.h>
 #include <linux/jiffies.h>
-#include <xen/events.h>
 #include <asm/xen/events.h>
 
 #define INTERVAL 180
 #define SLICE 15
 #define FREQUENCY 3292606
+#define FUN_ADDRESS 0xffffffff813af320
 
 #ifdef __i386
 __inline__ uint64_t rdtsc(void) {
@@ -27,6 +27,7 @@ __inline__ uint64_t rdtsc(void) {
 	return (d<<32) | a;
 }
 #endif
+
 
 int cpu_exe(void *ptr){
 	uint64_t credit = 0;
@@ -50,6 +51,7 @@ int cpu_exe(void *ptr){
 int cpu_ipi(void *ptr){
 	int send_cpu = 0;
 	int recv_cpu = 1;
+	void (*xen_send_IPI_one)(unsigned int cpu,enum ipi_vector vector);
 
 	unsigned long next_time;
 	uint64_t tsc;
@@ -57,6 +59,8 @@ int cpu_ipi(void *ptr){
 	set_cpus_allowed_ptr(current, get_cpu_mask(send_cpu));
 
 	next_time = jiffies + INTERVAL*HZ;
+
+	xen_send_IPI_one = &cpu_exe(void);
 
 	while (time_before(jiffies, next_time)) {
 		tsc = rdtsc() + SLICE*FREQUENCY;
