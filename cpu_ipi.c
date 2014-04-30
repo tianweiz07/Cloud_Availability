@@ -8,8 +8,8 @@
 #include <linux/jiffies.h>
 
 #define INTERVAL 180
-#define SLICE 0.015
-#define FREQUENCY 3292606000
+#define SLICE 15
+#define FREQUENCY 3292606
 
 struct task_struct *cpu_exe_task;
 struct task_struct *cpu_ipi_task;
@@ -59,11 +59,20 @@ int cpu_ipi(void *ptr){
 	current_time = jiffies;
 	next_time = current_time + INTERVAL*HZ;
 
-	while (time_before(jiffies, next_time)) {
-		tsc = GetCycle + (unsigned long)(SLICE*FREQUENCY);
-		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
-		while (time_before(jiffies, tsc));
-	}
+//	while (taime_before(jiffies, next_time)) {
+//		tsc = GetCycle() + (unsigned long)(SLICE*FREQUENCY);
+		tsc = GetCycle();
+		printk("1tsc: %lu\n", tsc);
+		mdelay(1);
+		tsc = GetCycle();
+		printk("2tsc: %lu\n", tsc);
+		mdelay(1);
+		tsc = GetCycle();
+		printk("3tsc: %lu\n", tsc);
+		
+//		apic->send_IPI_mask(get_cpu_mask(recv_cpu), RESCHEDULE_VECTOR);
+//		while (GetCycle() < tsc);
+//	}
 	
 	printk("CPU INTERRUPTION DONE!\n");
 	return 0;
@@ -74,7 +83,7 @@ static int __init cpu_ipi_init(void){
 
 	printk("entering cpu_ipi module\n");
 //	cpu_exe_task = kthread_run(&cpu_exe, NULL, "CPU EXECUTION");
-//	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
+	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
 	return 0;
 }
 
