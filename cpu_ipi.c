@@ -10,7 +10,7 @@
 #include <asm/xen/events.h>
 
 #define INTERVAL 180
-#define SLICE 30
+#define SLICE 0
 #define FREQUENCY 3292606
 #define FUN_ADDRESS 0xffffffff813af320
 
@@ -38,7 +38,6 @@ int exe_cpu3 = 3;
 int exe_cpu4 = 4;
 int exe_cpu5 = 5;
 int exe_cpu6 = 6;
-int exe_cpu7 = 7;
 
 int ipi_cpu0 = 8;
 
@@ -50,6 +49,7 @@ int cpu_exe(void *data){
 	exe_cpu_id = (int*) data;
 
 	set_cpus_allowed_ptr(current, get_cpu_mask(*exe_cpu_id));
+	printk("cpu_id: %d\n", *exe_cpu_id);
 
 	next_time = jiffies + INTERVAL*HZ;
 
@@ -67,6 +67,7 @@ int cpu_ipi(void *data){
 	uint64_t tsc;
 
 	set_cpus_allowed_ptr(current, get_cpu_mask(ipi_cpu0));
+
 
 	next_time = jiffies + INTERVAL*HZ;
 
@@ -98,10 +99,6 @@ int cpu_ipi(void *data){
 		tsc = rdtsc() + SLICE*FREQUENCY;
 		xen_send_IPI_one(exe_cpu6, XEN_CALL_FUNCTION_VECTOR);
 		while (rdtsc() < tsc);
-
-		tsc = rdtsc() + SLICE*FREQUENCY;
-		xen_send_IPI_one(exe_cpu7, XEN_CALL_FUNCTION_VECTOR);
-		while (rdtsc() < tsc);
 	}
 	
 	printk("CPU INTERRUPTION DONE!\n");
@@ -111,7 +108,13 @@ int cpu_ipi(void *data){
 
 
 static int __init cpu_ipi_init(void){
-	struct task_struct *cpu_exe_task;
+	struct task_struct *cpu_exe_task0;
+	struct task_struct *cpu_exe_task1;
+	struct task_struct *cpu_exe_task2;
+	struct task_struct *cpu_exe_task3;
+	struct task_struct *cpu_exe_task4;
+	struct task_struct *cpu_exe_task5;
+	struct task_struct *cpu_exe_task6;
 	struct task_struct *cpu_ipi_task;
 
 	void *exe_cpu_ptr0 = (void *)&exe_cpu0;
@@ -121,17 +124,15 @@ static int __init cpu_ipi_init(void){
 	void *exe_cpu_ptr4 = (void *)&exe_cpu4;
 	void *exe_cpu_ptr5 = (void *)&exe_cpu5;
 	void *exe_cpu_ptr6 = (void *)&exe_cpu6;
-	void *exe_cpu_ptr7 = (void *)&exe_cpu7;
 
 	printk("entering cpu_ipi module\n");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr0, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr1, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr2, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr3, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr4, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr5, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr6, "CPU EXECUTION");
-	cpu_exe_task = kthread_run(&cpu_exe, exe_cpu_ptr7, "CPU EXECUTION");
+	cpu_exe_task0 = kthread_run(&cpu_exe, exe_cpu_ptr0, "CPU EXECUTION");
+	cpu_exe_task1 = kthread_run(&cpu_exe, exe_cpu_ptr1, "CPU EXECUTION");
+	cpu_exe_task2 = kthread_run(&cpu_exe, exe_cpu_ptr2, "CPU EXECUTION");
+	cpu_exe_task3 = kthread_run(&cpu_exe, exe_cpu_ptr3, "CPU EXECUTION");
+	cpu_exe_task4 = kthread_run(&cpu_exe, exe_cpu_ptr4, "CPU EXECUTION");
+	cpu_exe_task5 = kthread_run(&cpu_exe, exe_cpu_ptr5, "CPU EXECUTION");
+	cpu_exe_task6 = kthread_run(&cpu_exe, exe_cpu_ptr6, "CPU EXECUTION");
 	cpu_ipi_task = kthread_run(&cpu_ipi, NULL, "CPU INTERRUPTION");
 
 	return 0;
