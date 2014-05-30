@@ -2,53 +2,48 @@
 # File Name: process.py
 
 """
-	This file is used to process the data from the lttng output
+	This file is used to process the data from the xentrace output
 """
+
+##
+# Command:
+# $ xentrace xentrace -D -e 0x2f000 -T 100 binary_result
+# $ cat binary_result | xentrace_format format > result
+#
 
 import os
 import string
+
+Frequency = 3.292606
 
 def process(tid_list):
 
 	runtime_list = [0]*len(tid_list);
 
-	data = open('result', 'r')
+	data = open('output', 'r')
 	activities = data.readlines()
 	data.close()
 
 	activity_start = activities[0]
-	hour_start = int(activity_start.split(' ')[0][1:3])
-	minute_start = int(activity_start.split(' ')[0][4:6])
-	second_start = int(activity_start.split(' ')[0][7:9])
-	millisecond_start = int(activity_start.split(' ')[0][10:-1])
+	start_time = int(activity_start.split(' ')[2])
 
 	activity_end = activities[-1]
-	hour_end = int(activity_end.split(' ')[0][1:3])
-	minute_end = int(activity_end.split(' ')[0][4:6])
-	second_end = int(activity_end.split(' ')[0][7:9])
-	millisecond_end = int(activity_end.split(' ')[0][10:-1])
+	end_time = int(activity_end.split(' ')[2])
 
-	total_time = ((hour_end-hour_start)*3600 + (minute_end-minute_start)*60 + (second_end-second_start))*1000000000 + (millisecond_end-millisecond_start)
+	total_time = end_time - start_time
 
 	for activity in activities:
-		prev_tid = activity.split(' ')[14]
-		next_tid = activity.split(' ')[26]
-		for i in range(len(tid_list)):
-			if (prev_tid == tid_list[i]):
-				hour = int(activity.split(' ')[0][1:3])
-				minute = int(activity.split(' ')[0][4:6])
-				second = int(activity.split(' ')[0][7:9])
-				millisecond = int(activity.split(' ')[0][10:-1])
-				runtime_list[i] += (hour*3600 + minute*60 + second)*1000000000 + millisecond
-			if (next_tid == tid_list[i]):
-				hour = int(activity.split(' ')[0][1:3])
-				minute = int(activity.split(' ')[0][4:6])
-				second = int(activity.split(' ')[0][7:9])
-				millisecond = int(activity.split(' ')[0][10:-1])
-				runtime_list[i] -= (hour*3600 + minute*60 + second)*1000000000 + millisecond
-#	print runtime
-#	print total_time
-	for i in range(len(tid_list)):
-		print runtime_list[i]*1.0/total_time
+		activity_list = activity.split(' ')
+		for i in range(len(activity_list)):
+			if (activity_list[i] == "old_domid"):
+				domid = activity_list[i+2]
+				for j in range(len(tid_list)):
+					if (domid == tid_list[j]):
+						runtime_list[j] += (int)(activity_list[i+5])
 
-process(['5503,','6017,','6514,','7220,','7872,','8596,','9269,','10164,','11034,','22936,'])
+		
+	print total_time
+	for i in range(len(tid_list)):
+		print runtime_list[i]*Frequency/total_time
+
+process(['0x0000002e,','0x00000015,'])

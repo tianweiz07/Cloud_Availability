@@ -13,10 +13,10 @@
 #include <asm/xen/hypervisor.h>
 
 //unit: millisecond
-#define INTERVAL1 1 
-#define INTERVAL2 4
+#define INTERVAL1 0.01
+#define INTERVAL2 0.02
 
-#define ROUND_NUM 20
+#define ROUND_NUM 100
 
 // Check /proc/kallsyms to get the following addresses
 #define IPI_ADDR 0xffffffff813af770
@@ -60,12 +60,10 @@ void set_affinity(unsigned int cpu) {
 
 void working_thread(void *ptr) {
 	uint64_t tsc;
-	uint64_t credit;
 	printk("Running working_thread @ vcpu %d\n", smp_processor_id());
 	tsc = rdtsc() + INTERVAL1 * FREQUENCY;
 
 	while (rdtsc() < tsc)
-		credit ++;
 	return;
 }
 
