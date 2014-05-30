@@ -10,7 +10,7 @@ import string
 
 
 FREQUENCY = 3.292624
-CPU_MASK = "0x00000000"
+CPU_MASK = "0x00000001"
 EVENT_MASK = "0x2f000"
 TIME = "10"
 DOMAIN_ID1 = "0x0000002e,"
@@ -22,10 +22,10 @@ DOMAIN_ID2 = "0x00000015,"
 # $ cat result | xentrace_formats format > output
 #
 def execute_cmd(cpu_mask, event_mask, time):
+	cmd0 = "rm -rf result output"
 	cmd1 = "xentrace" + " -D" + " -c " + cpu_mask + " -e " + event_mask + " -T " + time + " result"
-	cmd2 = "cat result | xentrace_formats formats > output"
-	print cmd1
-	print cmd2
+	cmd2 = "cat result | xentrace_format formats | grep switch_infprev > output"
+	os.popen(cmd0)
 	os.popen(cmd1)
 	os.popen(cmd2)
 
