@@ -57,7 +57,7 @@ def process(tid_list):
 		
 	print total_time
 	for i in range(len(tid_list)):
-		print runtime_list[i]*Frequency/total_time
+		print runtime_list[i]*FREQUENCY/total_time
 
 process([DOMAIN_ID1,DOMAIN_ID2])
 
