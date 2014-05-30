@@ -1,6 +1,6 @@
 KDIR := /lib/modules/$(shell uname -r)/build
 
-obj-m += cpu_ipi.o
+obj-m += ipi.o
 
 default:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
