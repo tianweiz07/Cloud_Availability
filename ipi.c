@@ -63,7 +63,7 @@ void working_thread(void *ptr) {
 	printk("Running working_thread @ vcpu %d\n", smp_processor_id());
 	tsc = rdtsc() + INTERVAL1 * FREQUENCY;
 
-	while (rdtsc() < tsc)
+	while (rdtsc() < tsc);
 	return;
 }
 
