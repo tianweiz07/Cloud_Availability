@@ -13,10 +13,10 @@
 #include <asm/xen/hypervisor.h>
 
 //unit: millisecond
-#define INTERVAL1 0.01
-#define INTERVAL2 0.02
+#define INTERVAL1 20
+#define INTERVAL2 0.01
 
-#define ROUND_NUM 100
+#define ROUND_NUM 3000
 
 // Check /proc/kallsyms to get the following addresses
 #define IPI_ADDR 0xffffffff813af770
@@ -25,8 +25,8 @@
 // iscpu to get the CPU frequency
 #define FREQUENCY 3292600
 
-#define SEND_CPUID 0
-#define RECV_CPUID 1
+#define SEND_CPUID 1
+#define RECV_CPUID 0
 
 
 #ifdef __i386
@@ -60,7 +60,7 @@ void set_affinity(unsigned int cpu) {
 
 void working_thread(void *ptr) {
 	uint64_t tsc;
-	printk("Running working_thread @ vcpu %d\n", smp_processor_id());
+//	printk("Running working_thread @ vcpu %d\n", smp_processor_id());
 	tsc = rdtsc() + INTERVAL1 * FREQUENCY;
 
 	while (rdtsc() < tsc);
@@ -106,7 +106,7 @@ static int __init ipi_init(void) {
 	
 	while (atomic_read(&round_count) < ROUND_NUM) {
 		tsc = rdtsc() + INTERVAL2 * FREQUENCY;
-		printk("Sending IPI from vcpu %d\n", smp_processor_id());
+//		printk("Sending IPI from vcpu %d\n", smp_processor_id());
 		xen_send_IPI_one(RECV_CPUID, XEN_CALL_FUNCTION_VECTOR);
 		while (rdtsc() < tsc);
 	}
