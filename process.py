@@ -13,8 +13,8 @@ FREQUENCY = 3.292624
 CPU_MASK = "0x00000001"
 EVENT_MASK = "0x2f000"
 TIME = "10"
-DOMAIN_ID1 = "0x0000002e,"
-DOMAIN_ID2 = "0x00000015,"
+DOMAIN_ID1 = "0x0000001d,"
+DOMAIN_ID2 = "0x00000002,"
 
 ##
 # Command:
@@ -59,6 +59,6 @@ def process(tid_list):
 	for i in range(len(tid_list)):
 		print runtime_list[i]*FREQUENCY/total_time
 
-process([DOMAIN_ID1,DOMAIN_ID2])
 
-execute_cmd(CPU_MASK, EVENT_MASK, TIME)
+#execute_cmd(CPU_MASK, EVENT_MASK, TIME)
+process([DOMAIN_ID1,DOMAIN_ID2])
