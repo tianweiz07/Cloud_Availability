@@ -13,13 +13,13 @@
 #include <asm/xen/hypervisor.h>
 
 //unit: millisecond
-#define INTERVAL1 20
+#define INTERVAL1 30
 #define INTERVAL2 0.01
 
-#define ROUND_NUM 3000
+#define ROUND_NUM 1000
 
 // Check /proc/kallsyms to get the following addresses
-#define IPI_ADDR 0xffffffff813af770
+#define IPI_ADDR 0xffffffff813afe40
 #define AFFINITY_ADDR 0xffffffff81063580
 
 // iscpu to get the CPU frequency
