@@ -21,8 +21,8 @@
 #define PAGE_NR (CACHE_SIZE/PAGE_SIZE)
 #define PAGE_ORDER 3
 
-#define INTERVAL1 1000
-#define INTERVAL2 1
+#define INTERVAL1 1 // unit: s, for the whole program
+#define INTERVAL2 1 // unit: ms, for the cache scan interval
 #define FREQUENCY 3292600
 
 
@@ -81,11 +81,13 @@ void cache_scan(void) {
 }
 
 static int __init prime_init(void) {
-	uint64_t tsc1, tsc2;
+	unsigned long tsc1;
+	uint64_t tsc2;
 	printk("Entering prime module\n");
 
-	tsc1 = rdtsc() + INTERVAL1 * FREQUENCY;
-	while (rdtsc() < tsc1) {
+	tsc1 = jiffies + INTERVAL1 * HZ;
+
+	while (time_before(jiffies, tsc1)) {
 		tsc2 = rdtsc() + INTERVAL2 * FREQUENCY;
 		cache_scan();
 		while (rdtsc() < tsc2);
