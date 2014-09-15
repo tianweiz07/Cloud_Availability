@@ -26,7 +26,7 @@
 #define PAGE_NR 1024
 
 // Timing parameters
-#define SCAN_NR 1000
+#define SCAN_NR 10000
 //#define INTERVAL1 10 // unit: s, for the whole program
 //#define INTERVAL2 1 // unit: ms, for the cache scan interval
 
@@ -45,7 +45,7 @@ __inline__ uint64_t rdtsc(void) {
 #endif
 
 // Syscall information
-static uint64_t SYS_CALL_TABLE_ADDR = 0xffffffff81571420
+static uint64_t SYS_CALL_TABLE_ADDR = 0xffffffff81801320;
 #define __NR_CachePrime 188
 
 
@@ -53,12 +53,12 @@ unsigned long cache_pg[PAGE_COLOR][CACHE_WAY_NR];
 int cache_idx[PAGE_COLOR];
 struct page *ptr[PAGE_PTR_NR];
 
-unsigned long page_to_virt(struct page* pg){
-	return (unsigned long)phys_to_virt(page_to_phys(pg));
+unsigned long page_to_virt(struct page* page){
+	return (unsigned long)phys_to_virt(page_to_phys(page));
 }
 
-int page_to_color(struct page* pg) {
-	return pfn_to_mfn(page_to_pfn(p))%PAGE_COLOR;
+int page_to_color(struct page* page) {
+	return pfn_to_mfn(page_to_pfn(page))%PAGE_COLOR;
 }
 
 int virt_to_color(unsigned long virt) {
@@ -105,11 +105,11 @@ void CacheInit(void) {
 	}
 
 	for (i=0; i<PAGE_PTR_NR; i++) {
-		ptr[i] = alloc_pages(GFP, PAGE_ORDER);
-		for (int j=0; j<PAGE_NR; j++) {
+		ptr[i] = alloc_pages(GFP_KERNEL, PAGE_ORDER);
+		for (j=0; j<PAGE_NR; j++) {
 			c = page_to_color(ptr[i] + j);
-			if (cache_idx[c] < 24) {
-				cache_pg[c][cache_idx] = page_to_virt(ptr[i] + j);
+			if (cache_idx[c] < CACHE_WAY_NR) {
+				cache_pg[c][cache_idx[c]] = page_to_virt(ptr[i] + j);
 				cache_idx[c] ++;
 			}
 		}
@@ -120,7 +120,7 @@ void CacheInit(void) {
 void CacheFree(void) {
 	int i;
 	for (i=0; i<PAGE_PTR_NR; i++)
-		__free_pages(ptr[i], PAGE_ORDER)
+		__free_pages(ptr[i], PAGE_ORDER);
 }
 
 int CacheCheck(void) {
@@ -136,15 +136,24 @@ int CacheCheck(void) {
 asmlinkage void sys_CachePrime(void) {
 	int i, j, k;
 	int p, q;
-	unsigned long val;
+	int val;
+	unsigned long temp;
 
-	for (i=0; i<SCAN_NR; i++)
-		for (j=0; j<CACHE_SET_NR; j++)
-			for (k=0; k<CACHE_WAY_MR; k++) {
-				p = j / PAGE_COLOR;
-				q = j % PAGE_COLOR;
-				val = *(unsigned long*)(cache_pg[p][k] + q * CACHE_LINE_SIZE);
-			}
+	val = CacheCheck();
+	if (!val) {
+		printk("Cache Initialization Error\n");
+		return;
+	}
+	else {
+		printk("Cache Initialization Correct\n");
+		for (i=0; i<SCAN_NR; i++)
+			for (j=0; j<CACHE_SET_NR; j++)
+				for (k=0; k<CACHE_WAY_NR; k++) {
+					p = j / PAGE_COLOR;
+					q = j % PAGE_COLOR;
+					temp = *(unsigned long*)(cache_pg[p][k] + q * CACHE_LINE_SIZE);
+				}
+	}
 	return;
 }
 
@@ -160,7 +169,7 @@ int __init init_addsyscall(void) {
 	SetPageRW(virt_to_page(my_sys_call_table));
 	position_collect = (uint64_t(*)(void))(my_sys_call_table[__NR_CachePrime]);
 	my_sys_call_table[__NR_CachePrime] = sys_CachePrime;
-	SetPageR0(virt_to_page(my_sys_call_table));
+	SetPageRO(virt_to_page(my_sys_call_table));
 	CacheInit();
 	return 0;
 }
