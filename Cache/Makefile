@@ -1,6 +1,6 @@
 KDIR := /lib/modules/$(shell uname -r)/build
 
-obj-m += prime.o
+obj-m += addsyscall.o
 
 default:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
