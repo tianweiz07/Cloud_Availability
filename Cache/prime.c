@@ -21,7 +21,7 @@
 #define PAGE_NR (CACHE_SIZE/PAGE_SIZE)
 #define PAGE_ORDER 3
 
-#define INTERVAL1 1 // unit: s, for the whole program
+#define INTERVAL1 10 // unit: s, for the whole program
 #define INTERVAL2 1 // unit: ms, for the cache scan interval
 #define FREQUENCY 3292600
 
@@ -85,6 +85,7 @@ static int __init prime_init(void) {
 	uint64_t tsc2;
 	printk("Entering prime module\n");
 
+	MemInit();
 	tsc1 = jiffies + INTERVAL1 * HZ;
 
 	while (time_before(jiffies, tsc1)) {
@@ -98,7 +99,7 @@ static int __init prime_init(void) {
 
 static void __exit prime_exit(void) {
 	printk("Leaving prime module\n");
-	__free_pages(g_pages, 3);
+	__free_pages(g_pages, PAGE_ORDER);
 }
 
 module_init(prime_init);
