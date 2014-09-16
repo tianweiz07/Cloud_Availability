@@ -10,7 +10,7 @@
 
 // Cache configurations
 #define CACHE_SET_NR 64
-#define CACHE_WAY_NR 8
+#define CACHE_WAY_NR 16
 #define CACHE_LINE_SIZE 64
 #define CACHE_SIZE (CACHE_LINE_SIZE*CACHE_WAY_NR*CACHE_SET_NR)
 

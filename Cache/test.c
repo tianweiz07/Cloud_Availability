@@ -5,7 +5,7 @@
 #define __NR_CachePrime 188
 
 int main(int argc, char* argv[]) {
-	int t = 5;
-	syscall(__NR_CachePrime, 5);
+	int t = 700;
+	syscall(__NR_CachePrime, t);
 	return 0;
 }
