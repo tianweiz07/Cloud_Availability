@@ -142,7 +142,6 @@ static noinline unsigned long CacheScan(void) {
 			temp = *(unsigned long*)(cache_pg[p][j] + q * CACHE_LINE_SIZE);
 		}
 	}
-	printk("scan time: %llu\n", rdtsc()-tsc);
 
 	return temp;
 }
