@@ -14,21 +14,22 @@
 
 
 // Cache configurations
-#define CACHE_SET_NR 30720
+#define CACHE_SET_NR 64
 #define CACHE_WAY_NR 8
 #define CACHE_LINE_SIZE 64
 #define CACHE_SIZE (CACHE_LINE_SIZE*CACHE_WAY_NR*CACHE_SET_NR)
 
 // Page parameters
 #define PAGE_COLOR (CACHE_SET_NR*CACHE_LINE_SIZE/PAGE_SIZE)
-#define PAGE_PTR_NR 6
-#define PAGE_ORDER 10
-#define PAGE_NR 1024
+#define PAGE_PTR_NR 1
+#define PAGE_ORDER 3
+#define PAGE_NR 8
 
 // Timing parameters
 #define SCAN_NR 10000
-//#define INTERVAL1 10 // unit: s, for the whole program
-//#define INTERVAL2 1 // unit: ms, for the cache scan interval
+#define INTERVAL1 10 // unit: s, for the whole program
+#define INTERVAL2 1 // unit: ms, for the cache scan interval
+#define FREQUENCY 2900048
 
 #ifdef __i386
 __inline__ uint64_t rdtsc(void) {
@@ -133,8 +134,10 @@ int CacheCheck(void) {
 	return val;
 }
 
-asmlinkage void sys_CachePrime(void) {
-	int i, j, k;
+asmlinkage void sys_CachePrime(int t) {
+	unsigned long tsc1;
+	uint64_t tsc2;
+	int i, j;
 	int p, q;
 	int val;
 	unsigned long temp;
@@ -146,13 +149,18 @@ asmlinkage void sys_CachePrime(void) {
 	}
 	else {
 		printk("Cache Initialization Correct\n");
-		for (i=0; i<SCAN_NR; i++)
-			for (j=0; j<CACHE_SET_NR; j++)
-				for (k=0; k<CACHE_WAY_NR; k++) {
-					p = j / PAGE_COLOR;
-					q = j % PAGE_COLOR;
-					temp = *(unsigned long*)(cache_pg[p][k] + q * CACHE_LINE_SIZE);
+		tsc1 = jiffies + t * HZ;
+		while (time_before(jiffies, tsc1)) {
+			tsc2 = rdtsc() + INTERVAL2 * FREQUENCY;
+			for (i=0; i<CACHE_SET_NR; i++) {
+				for (j=0; j<CACHE_WAY_NR; j++) {
+					p = i / PAGE_COLOR;
+					q = i % PAGE_COLOR;
+					temp = *(unsigned long*)(cache_pg[p][j] + q * CACHE_LINE_SIZE);
 				}
+			}
+			while (rdtsc() < tsc2);
+		}
 	}
 	return;
 }
