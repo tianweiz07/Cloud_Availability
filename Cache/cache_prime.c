@@ -148,9 +148,9 @@ static noinline unsigned long CacheScan(void) {
 }
 
 asmlinkage void sys_CachePrime(int t) {
-//	unsigned long tsc1;
 	int k;
 	int val;
+	unsigned long tsc1;
 
 	val = CacheCheck();
 	if (!val) {
@@ -159,11 +159,10 @@ asmlinkage void sys_CachePrime(int t) {
 	}
 	else {
 		printk("Cache Initialization Correct\n");
-//		tsc1 = jiffies + t * HZ;
-//		while (time_before(jiffies, tsc1)) {
-//			tsc2 = rdtsc() + INTERVAL2 * FREQUENCY;
-		for (k=0; k<2000; k++) {
-			CacheScan();
+		tsc1 = jiffies + t * HZ;
+		while (time_before(jiffies, tsc1)) {
+			for (k=0; k<2000; k++) 
+				CacheScan();
 		}
 	}
 	return;
