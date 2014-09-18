@@ -9,16 +9,16 @@
 #endif
 
 // Cache configurations
-#define CACHE_SET_NR 64
+#define CACHE_SET_NR 30720
 #define CACHE_WAY_NR 8
 #define CACHE_LINE_SIZE 64
 #define CACHE_SIZE (CACHE_LINE_SIZE*CACHE_WAY_NR*CACHE_SET_NR)
 
 // Page parameters
 #define PAGE_COLOR (CACHE_SET_NR*CACHE_LINE_SIZE/PAGE_SIZE)
-#define PAGE_PTR_NR 1
-#define PAGE_ORDER 3
-#define PAGE_NR 8
+#define PAGE_PTR_NR 6
+#define PAGE_ORDER 10
+#define PAGE_NR 1024
 
 // Timing parameters
 #define SCAN_NR 10000
