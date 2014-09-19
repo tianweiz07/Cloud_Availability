@@ -1,5 +1,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/sched.h>
 #include <asm/io.h>
 #include <asm/xen/page.h>
 #include <asm/xen/hypercall.h>
@@ -131,7 +132,7 @@ int CacheCheck(void) {
 
 static noinline unsigned long CacheScan(void) {
 	int i, j, p, q;
-	unsigned long temp;
+	unsigned long temp = 0;
 	uint64_t tsc;
 	
 	tsc = rdtsc();
@@ -146,10 +147,12 @@ static noinline unsigned long CacheScan(void) {
 	return temp;
 }
 
-asmlinkage void sys_CachePrime(int t) {
+asmlinkage void sys_CachePrime(int t, int cpu_id) {
 	int k;
 	int val;
 	unsigned long tsc1;
+
+	set_cpus_allowed_ptr(current, cpumask_of(cpu_id));
 
 	val = CacheCheck();
 	if (!val) {
