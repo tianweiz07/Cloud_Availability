@@ -20,12 +20,6 @@
 #define PAGE_ORDER 10
 #define PAGE_NR 1024
 
-// Timing parameters
-#define SCAN_NR 10000
-#define INTERVAL1 10 // unit: s, for the whole program
-#define INTERVAL2 1 // unit: ms, for the cache scan interval
-#define FREQUENCY 2900048
-
 #ifdef __i386
 __inline__ uint64_t rdtsc(void) {
 	uint64_t x;
@@ -48,6 +42,10 @@ static uint64_t SYS_CALL_TABLE_ADDR = 0xffffffff81801320;
 unsigned long cache_pg[PAGE_COLOR][CACHE_WAY_NR];
 int cache_idx[PAGE_COLOR];
 struct page *ptr[PAGE_PTR_NR];
+
+unsigned long cache_timestamp[CACHE_SET_NR];
+unsigned long cache_timestamp_copy[CACHE_SET_NR];
+int cache_flag[CACHE_SET_NR];
 
 unsigned long page_to_virt(struct page* page){
 	return (unsigned long)phys_to_virt(page_to_phys(page));
@@ -110,6 +108,12 @@ void CacheInit(void) {
 			}
 		}
 	}
+
+	for (i=0; i<CACHE_SET_NR; i++) {
+		cache_timestamp[i] = 0;
+		cache_timestamp_copy[i] = 0;
+		cache_flag[i] = 0;
+	}
 	return;
 }
 
@@ -129,27 +133,101 @@ int CacheCheck(void) {
 	return val;
 }
 
-static noinline unsigned long CacheScan(void) {
+int partition(unsigned long *array, int left, int right) {
+	int pos = right;
+	int p = left;
+	int q = right-1;
+	int temp;
+
+	if (left>=right)
+		return -1;
+
+	while (p<=q) {
+		while ((p<right)&&(array[p]<=array[pos]))
+			p++;
+		while ((q>left)&&(array[q]>array[pos]))
+			q--;
+		if (p>=q)
+			break;
+		temp = array[p];
+		array[p] = array[q];
+		array[q] = temp;
+	}
+	temp = array[p];
+	array[p] = array[pos];
+	array[pos] = temp;
+	return p;
+}
+
+int getMedian(unsigned long *array, int size) {
+	int p = 0;
+	int q = size -1;
+	int mid = size/2;
+	int i = 0;
+
+	if ((array == NULL)||(size <=0))
+		return -1;
+
+	while (i!= mid) {
+		i = partition(array, p, q);
+		if (i < mid)
+			p = i + 1;
+		if (i> mid)
+			q = i - 1;
+	}
+	return i;
+}
+
+void CacheTrain(void) {
+	int i, median;
+	for (i=0; i<CACHE_SET_NR; i++)
+		cache_timestamp_copy[i] = cache_timestamp[i];
+	median = getMedian(cache_timestamp_copy, CACHE_SET_NR);
+	for (i=0; i<CACHE_SET_NR; i++)
+		if (cache_timestamp[i]<cache_timestamp_copy[median])
+			cache_flag[i] = 1;
+}
+
+static noinline unsigned long CacheScan0(void) {
 	int i, j, p, q;
 	unsigned long temp;
 	uint64_t tsc;
 	
-	tsc = rdtsc();
 	for (i=0; i<CACHE_SET_NR; i++) {
-		for (j=0; j<CACHE_WAY_NR; j++) {
-			p = i / (PAGE_SIZE/CACHE_LINE_SIZE);
-			q = i % (PAGE_SIZE/CACHE_LINE_SIZE);
-			temp = *(unsigned long*)(cache_pg[p][j] + q * CACHE_LINE_SIZE);
+			tsc = rdtsc();
+			for (j=0; j<CACHE_WAY_NR; j++) {
+				p = i / (PAGE_SIZE/CACHE_LINE_SIZE);
+				q = i % (PAGE_SIZE/CACHE_LINE_SIZE);
+				temp = *(unsigned long*)(cache_pg[p][j] + q * CACHE_LINE_SIZE);
+			}
+			cache_timestamp[i] += rdtsc() - tsc;
+	}
+
+	return temp;
+}
+
+static noinline unsigned long CacheScan1(void) {
+	int i, j, p, q;
+	unsigned long temp;
+	
+	for (i=0; i<CACHE_SET_NR; i++) {
+		if (cache_flag[i] == 0) {
+			for (j=0; j<CACHE_WAY_NR; j++) {
+				p = i / (PAGE_SIZE/CACHE_LINE_SIZE);
+				q = i % (PAGE_SIZE/CACHE_LINE_SIZE);
+				temp = *(unsigned long*)(cache_pg[p][j] + q * CACHE_LINE_SIZE);
+			}
 		}
 	}
 
 	return temp;
 }
 
-asmlinkage void sys_CachePrime(int t) {
+asmlinkage void sys_CachePrime(int t1, int t2, unsigned long *timestamp, int *flag) {
 	int k;
 	int val;
 	unsigned long tsc1;
+	unsigned long tsc2;
 
 	val = CacheCheck();
 	if (!val) {
@@ -158,10 +236,20 @@ asmlinkage void sys_CachePrime(int t) {
 	}
 	else {
 		printk("Cache Initialization Correct\n");
-		tsc1 = jiffies + t * HZ;
+		tsc1 = jiffies + t1 * HZ;
+		tsc2 = jiffies + t2 * HZ;
 		while (time_before(jiffies, tsc1)) {
-			for (k=0; k<2000; k++) 
-				CacheScan();
+			CacheScan0();
+		}
+
+		CacheTrain();
+
+		while (time_before(jiffies, tsc2)) {
+			CacheScan1();
+		}
+		for (k=0; k<CACHE_SET_NR; k++) {
+			timestamp[k] = cache_timestamp[k];
+			flag[k] = cache_flag[k];
 		}
 	}
 	return;
