@@ -130,13 +130,13 @@ int CacheCheck(void) {
 	return val;
 }
 
-static noinline unsigned long CacheScan(void) {
+static noinline unsigned long CacheScan(int cpu_id) {
 	int i, j, p, q;
 	unsigned long temp = 0;
 	uint64_t tsc;
 	
 	tsc = rdtsc();
-	for (i=0; i<CACHE_SET_NR; i++) {
+	for (i=cpu_id*CACHE_SET_NR/4; i<(cpu_id+1)*CACHE_SET_NR/4; i++) {
 		for (j=0; j<CACHE_WAY_NR; j++) {
 			p = i / (PAGE_SIZE/CACHE_LINE_SIZE);
 			q = i % (PAGE_SIZE/CACHE_LINE_SIZE);
@@ -164,7 +164,7 @@ asmlinkage void sys_CachePrime(int t, int cpu_id) {
 		tsc1 = jiffies + t * HZ;
 		while (time_before(jiffies, tsc1)) {
 			for (k=0; k<2000; k++) 
-				CacheScan();
+				CacheScan(cpu_id);
 		}
 	}
 	return;
