@@ -10,12 +10,7 @@
 #endif
 
 // Cache configurations
-#define CACHE_SET_NR 64
-#define CACHE_WAY_NR 8
 #define CACHE_LINE_SIZE 64
-#define CACHE_SIZE (CACHE_LINE_SIZE*CACHE_WAY_NR*CACHE_SET_NR)
-
-// Page parameters
 
 // Timing parameters
 #ifdef __i386
@@ -34,16 +29,7 @@ __inline__ uint64_t rdtsc(void) {
 
 // Syscall information
 static uint64_t SYS_CALL_TABLE_ADDR = 0xffffffff81801320;
-#define __NR_CachePrime 188
-
-/*
-static noinline void fetch_and_add(int *variable, int value) {
-	asm volatile ("lock; xaddl %%eax, %2\n\t"
-		      :"=a" (value)
-		      :"a" (value), "m"(*variable)
-		      :"memory");
-}
-*/
+#define __NR_BusLock 188
 
 /*
 static noinline void cache_flush(char *address) {
@@ -54,17 +40,16 @@ static noinline void cache_flush(char *address) {
 }
 */
 
-static noinline void flush_fetch(char *flush_address, int *read_address, int value) {
-	asm volatile ("clflush (%1)\n\t"
-		      "clflush (%2)\n\t"
-		      "lock; xaddl %%eax, %3\n\t"
+static noinline void atomic_fetch(int *read_address, int value) {
+	asm volatile (
+		      "lock; xaddl %%eax, %1\n\t"
 		      :"=a"(value)
-		      :"r"(flush_address), "r"(flush_address+CACHE_LINE_SIZE), "m"(*read_address), "a"(value)
+		      :"m"(*read_address), "a"(value)
 		      :"memory");
 }
 
 struct page *ptr;
-char *cache_list[8];
+char *cache_list;
 
 unsigned long page_to_virt(struct page* page){
 	return (unsigned long)phys_to_virt(page_to_phys(page));
@@ -100,31 +85,20 @@ void SetPageRO(struct page* page)
 
 
 void CacheInit(void) {
-	int i, j, k;
-	ptr = alloc_pages(GFP_KERNEL, 3);
-	for(i=0;i<8;i++)
-		cache_list[i] = (char*)phys_to_virt(page_to_phys(ptr+i));
-
-	for (i=0; i<8; i++) {
-		for (j=0; j<64; j++) {
-			for (k=0; k<64; k++) {
-				cache_list[i][j*64+k] = k;
-			}
-		}
-	}
-
+	ptr = alloc_pages(GFP_KERNEL, 1);
+	cache_list = (char*)phys_to_virt(page_to_phys(ptr));
 	return;
 }
 
 void CacheFree(void) {
-	__free_pages(ptr, 3);
+	__free_pages(ptr, 1);
 }
 
-asmlinkage void sys_CachePrime(int t) {
+asmlinkage void sys_BusLock(int t) {
 	unsigned long tsc;
 	tsc = jiffies + t * HZ;
 	while (time_before(jiffies, tsc)) {
-		flush_fetch(cache_list[0], (int *)(cache_list[0]+CACHE_LINE_SIZE-1), 0x0);
+		atomic_fetch((int *)(cache_list + CACHE_LINE_SIZE - 1), 0x0);
 	}
 	return;
 }
@@ -139,8 +113,8 @@ int __init init_addsyscall(void) {
 	printk("Module Init\n");
 	my_sys_call_table = (void**) SYS_CALL_TABLE_ADDR;
 	SetPageRW(virt_to_page(my_sys_call_table));
-	position_collect = (uint64_t(*)(void))(my_sys_call_table[__NR_CachePrime]);
-	my_sys_call_table[__NR_CachePrime] = sys_CachePrime;
+	position_collect = (uint64_t(*)(void))(my_sys_call_table[__NR_BusLock]);
+	my_sys_call_table[__NR_BusLock] = sys_BusLock;
 	SetPageRO(virt_to_page(my_sys_call_table));
 	CacheInit();
 	return 0;
@@ -149,7 +123,7 @@ int __init init_addsyscall(void) {
 void __exit exit_addsyscall(void) {
 	printk("Module Exit\n");
 	SetPageRW(virt_to_page(my_sys_call_table));
-	my_sys_call_table[__NR_CachePrime] = position_collect;
+	my_sys_call_table[__NR_BusLock] = position_collect;
 	SetPageRO(virt_to_page(my_sys_call_table));
 	CacheFree();
 	return;
