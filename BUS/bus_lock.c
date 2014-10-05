@@ -94,11 +94,11 @@ void CacheFree(void) {
 	__free_pages(ptr, 1);
 }
 
-asmlinkage void sys_BusLock(int t) {
+asmlinkage void sys_BusLock(int t, int cpu_id) {
 	unsigned long tsc;
 	tsc = jiffies + t * HZ;
 	while (time_before(jiffies, tsc)) {
-		atomic_fetch((int *)(cache_list + CACHE_LINE_SIZE - 1), 0x0);
+		atomic_fetch((int *)(cache_list + (cpu_id + 1) * CACHE_LINE_SIZE - 1), 0x0);
 	}
 	return;
 }

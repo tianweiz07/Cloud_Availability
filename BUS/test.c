@@ -4,10 +4,19 @@
 #include <sys/syscall.h>
 
 #define __NR_BusLock 188
-#define TIME 50
 
 int main(int argc, char* argv[]) {
-	syscall(__NR_BusLock, TIME);
+	pid_t pid1;
+	int cpu_id;
+	int time = atoi(argv[1]);
+	pid1 = fork();
+	if (pid1<0) {
+		printf("fork error\n");
+		return 0;
+	}
+	cpu_id = (pid1>0);
+	printf("Bus Lock Start!\n");
+	syscall(__NR_BusLock, time, cpu_id);
 	printf("Bus Lock Done!\n");
 	return 0;
 }
