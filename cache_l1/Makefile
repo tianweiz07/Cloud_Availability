@@ -1,7 +1,7 @@
 KDIR := /lib/modules/$(shell uname -r)/build
 CC = gcc
 
-obj-m += cache_prime.o
+obj-m += cache_clean.o
 
 all: kernel user
 
