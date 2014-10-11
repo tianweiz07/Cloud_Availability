@@ -174,14 +174,11 @@ static noinline void clean_icache(void)
 
 asmlinkage void sys_CacheClean(int t) {
 	unsigned long tsc1;
-	uint64_t tsc2;
 
 	tsc1 = jiffies + t * HZ;
 	while (time_before(jiffies, tsc1)) {
-		tsc2 = rdtsc();
 		clean_dcache();
 		clean_icache();
-		printk("%llu\n", rdtsc()-tsc2);
 	}
 	return;
 }

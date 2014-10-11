@@ -65,19 +65,19 @@
 .globl entry63_0
 
 entry0_0:
-  jmp entry0_1
+  jmp entry1_0
   .align 64
 
 entry1_0:
-  jmp entry1_1
+  jmp entry2_0
   .align 64
 
 entry2_0:
-  jmp entry2_1
+  jmp entry3_0
   .align 64
 
 entry3_0:
-  jmp entry3_1
+  jmp entry4_0
   .align 64
 
 entry4_0:
