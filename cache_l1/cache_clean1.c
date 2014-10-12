@@ -17,8 +17,10 @@
 #define __KERNEL__
 #endif
 
-#define INTERVAL1 5000000
-#define INTERVAL2 5000000
+#define INTERVAL1 81200000
+#define INTERVAL2 29000
+
+
 
 #define SEND_CPUID 1
 #define RECV_CPUID 0

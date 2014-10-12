@@ -178,7 +178,7 @@ asmlinkage void sys_CacheClean(int t) {
 	tsc1 = jiffies + t * HZ;
 	while (time_before(jiffies, tsc1)) {
 		clean_dcache();
-		clean_icache();
+//		clean_icache();
 	}
 	return;
 }
