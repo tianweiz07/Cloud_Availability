@@ -123,7 +123,6 @@ static noinline void working_thread2(uint64_t *cache_addr, unsigned long *timing
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
-//		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
@@ -176,7 +175,6 @@ static noinline void working_thread3(uint64_t *cache_addr)
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
-//		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
 		"mov (%%r9), %%r9\n\t"
@@ -212,8 +210,8 @@ void CacheInit(void) {
 		for (j=0; j<6; j++) {
 			cache_location[i][j] = 200;
 		}
-/*
-	for (i=0; i<2048; i++)
+
+/*	for (i=0; i<2048; i++)
 		for (j=0; j<6; j++) {
 			cache_location[i][j] = 0;
 	}
@@ -225,8 +223,8 @@ void CacheInit(void) {
 			}
 		}
 	}
-
 */
+
 
 	return;
 }
@@ -351,41 +349,44 @@ asmlinkage void sys_CacheSearch(int *result) {
 }
 
 
-asmlinkage void sys_CacheClean(int mode, int time, unsigned long **timestamp, unsigned long *num, int cpu_id) {
+asmlinkage void sys_CacheClean(int mode, int time, unsigned long **timestamp, unsigned long *num, unsigned long threshold) {
 	int i, j;
 	unsigned long n = 0;
 	int index, offset;
 	unsigned long tsc;
 	uint64_t *temp_addr;
 
-	set_cpus_allowed_ptr(current, cpumask_of(cpu_id));
-
 	tsc = jiffies + time * HZ;
 	if (mode == 0) {
+
 		while (time_before(jiffies, tsc)) {
 			n++;
-			for (i=cpu_id*1024; i<(cpu_id+1)*1024; i++) {
+			for (i=0; i<2048; i++) {
 				index = i / 64;
 				offset = i % 64;
 				for (j=0; j<6; j++) {
 					if (cache_location[i][j] != 200) {
 						temp_addr = cache_page[index][cache_location[i][j]] + offset*CACHE_LINE_SIZE/8;
-						working_thread2(temp_addr, &timestamp[i-cpu_id*1024][j]);
+						working_thread2(temp_addr, &timestamp[i][j]);
 					}
 				}
 			}
 		}
+
+		for (i=0; i<2048; i++)
+			for (j=0; j<6; j++)
+				timestamp[i][j] = timestamp[i][j]/n;
 	}
 	else {
 		while (time_before(jiffies, tsc)) {
 			n++;
-			for (i=cpu_id*1024; i<(cpu_id+1)*1024; i++) {
+			for (i=0; i<2048; i++) {
 				index = i / 64;
 				offset = i % 64;
 				for (j=0; j<6; j++) {
-					if (cache_location[i][j] != 200) {
+					if (timestamp[i][j] > threshold) {
 						temp_addr = cache_page[index][cache_location[i][j]] + offset*CACHE_LINE_SIZE/8;
-						working_thread3(temp_addr);
+                         			working_thread3(temp_addr);
 					}
 				}
 			}
