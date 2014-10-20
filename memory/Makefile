@@ -1,7 +1,7 @@
 KDIR := /lib/modules/$(shell uname -r)/build
 CC = gcc
 
-obj-m += bus_lock.o
+obj-m += memory_hit.o
 
 all: kernel user
 
