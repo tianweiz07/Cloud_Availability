@@ -13,7 +13,7 @@
 #define PAGE_ORDER 10
 #define PAGE_NR 1024
 
-#define ROUND_NR 9000000
+#define ROUND_NR 9000
 
 struct page *ptr[PAGE_PTR_NR];
 int *list[PAGE_PTR_NR];
@@ -22,6 +22,20 @@ struct page *ptr_bk[PAGE_PTR_NR];
 int *list_bk[PAGE_PTR_NR];
 
 atomic_t flag;
+
+#ifdef __i386
+__inline__ uint64_t rdtsc(void) {
+        uint64_t x;
+        __asm__ volatile ("rdtsc" : "=A" (x));
+        return x;
+}
+#elif __amd64
+__inline__ uint64_t rdtsc(void) {
+        uint64_t a, d;
+        __asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+        return (d<<32) | a;
+}
+#endif
 
 unsigned long page_to_virt(struct page* page){
 	return (unsigned long)phys_to_virt(page_to_phys(page));
@@ -99,6 +113,7 @@ void MemFree(void) {
 
 int __init init_addsyscall(void) {
 	int offset, bit;
+	uint64_t tsc;
 	printk("Module Init\n");
 	set_cpus_allowed_ptr(current, cpumask_of(0));
 	MemInit();
@@ -109,7 +124,9 @@ int __init init_addsyscall(void) {
 
 	for (bit=6; bit<22; bit++) {
 		offset = (1<<bit)/sizeof(int);
+		tsc = rdtsc();
 		main_access(offset);
+		printk("Bit %d: %llu\n", bit, rdtsc()-tsc);
 	}
 	atomic_set(&flag, 2);
 	return 0;
