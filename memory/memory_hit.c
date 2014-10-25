@@ -13,7 +13,7 @@
 #define PAGE_ORDER 10
 #define PAGE_NR 1024
 
-#define ROUND_NR 9000
+#define ROUND_NR 1000000
 
 struct page *ptr[PAGE_PTR_NR];
 int *list[PAGE_PTR_NR];
@@ -75,30 +75,21 @@ void MemInit(void) {
 }
 
 int bk_access(void *argv) {
-	int next;
-	int i;
+	volatile unsigned int next = 0;
 	set_cpus_allowed_ptr(current, cpumask_of(1));
 	atomic_set(&flag, 1);
 	while (atomic_read(&flag)!=2) {
-		get_random_bytes(&next, sizeof(next));
-		next = next % PAGE_PTR_NR;
-		for (i=0; i<PAGE_PTR_NR; i++) {
-			next = list[next][0];
-		}
+		next = list[next][0];
 	}
 	return 0;
 
 }
 
 int main_access(int offset) {
-	int i, j;
-	unsigned int next;
+	int i;
+	volatile unsigned int next = 0;
 	for (i=0; i<ROUND_NR; i++) {
-		get_random_bytes(&next, sizeof(next));
-		next = next % PAGE_PTR_NR;
-		for (j=0; j<PAGE_PTR_NR; j++) {
-			next = list_bk[next][offset];
-		}
+		next = list_bk[next][offset];
 	}
 	return 0;
 }
@@ -126,7 +117,7 @@ int __init init_addsyscall(void) {
 		offset = (1<<bit)/sizeof(int);
 		tsc = rdtsc();
 		main_access(offset);
-		printk("Bit %d: %llu\n", bit, rdtsc()-tsc);
+		printk("BIT %d: %llu\n", bit, rdtsc()-tsc);
 	}
 	atomic_set(&flag, 2);
 	return 0;
