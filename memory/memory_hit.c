@@ -16,10 +16,10 @@
 #define ROUND_NR 1000000
 
 struct page *ptr[PAGE_PTR_NR];
-int *list[PAGE_PTR_NR];
+uint64_t *list[PAGE_PTR_NR];
 
 struct page *ptr_bk[PAGE_PTR_NR];
-int *list_bk[PAGE_PTR_NR];
+uint64_t *list_bk[PAGE_PTR_NR];
 
 atomic_t flag;
 
@@ -45,41 +45,41 @@ void MemInit(void) {
 	int i, j;
 	for (i=0; i<PAGE_PTR_NR; i++){
 		ptr[i] = alloc_pages(GFP_KERNEL, PAGE_ORDER);
-		list[i] = (int *)page_to_virt(ptr[i]);
+		list[i] = (uint64_t *)page_to_virt(ptr[i]);
 	}
 
 	for (i=0; i<PAGE_PTR_NR; i++) {
-		for (j=0; j<4096*1024/sizeof(int); j++) {
+		for (j=0; j<4096*1024/sizeof(uint64_t); j++) {
 			if (i==(PAGE_PTR_NR-1))
-				list[i][j] = 0;
+				list[i][j] = (uint64_t) (&list[0][j]);
 			else
-				list[i][j] = i+1;
+				list[i][j] = (uint64_t) (&list[i+1][j]);
 		}
 	}
 
 
 	for (i=0; i<PAGE_PTR_NR; i++){
 		ptr_bk[i] = alloc_pages(GFP_KERNEL, PAGE_ORDER);
-		list_bk[i] = (int *)page_to_virt(ptr_bk[i]);
+		list_bk[i] = (uint64_t *)page_to_virt(ptr_bk[i]);
 	}
 
 	for (i=0; i<PAGE_PTR_NR; i++) {
-		for (j=0; j<4096*1024/sizeof(int); j++) {
+		for (j=0; j<4096*1024/sizeof(uint64_t); j++) {
 			if (i==(PAGE_PTR_NR-1))
-				list_bk[i][j] = 0;
+				list_bk[i][j] = (uint64_t) (&list[0][j]);
 			else
-				list_bk[i][j] = i+1;
+				list_bk[i][j] = (uint64_t) (&list[i+1][j]);
 		}
 	}
 	return;
 }
 
 int bk_access(void *argv) {
-	volatile unsigned int next = 0;
+	volatile uint64_t next = list[0][0];
 	set_cpus_allowed_ptr(current, cpumask_of(1));
 	atomic_set(&flag, 1);
 	while (atomic_read(&flag)!=2) {
-		next = list[next][0];
+		next = *(uint64_t *)next;
 	}
 	return 0;
 
@@ -87,9 +87,9 @@ int bk_access(void *argv) {
 
 int main_access(int offset) {
 	int i;
-	volatile unsigned int next = 0;
+	volatile uint64_t next = list[0][offset];
 	for (i=0; i<ROUND_NR; i++) {
-		next = list_bk[next][offset];
+		next = *(uint64_t *)next;
 	}
 	return 0;
 }
@@ -114,7 +114,7 @@ int __init init_addsyscall(void) {
 		schedule();
 
 	for (bit=6; bit<22; bit++) {
-		offset = (1<<bit)/sizeof(int);
+		offset = (1<<bit)/sizeof(uint64_t);
 		tsc = rdtsc();
 		main_access(offset);
 		printk("BIT %d: %llu\n", bit, rdtsc()-tsc);
