@@ -13,7 +13,7 @@
 #define PAGE_ORDER 10
 #define PAGE_NR 1024
 
-#define ROUND_NR 100000
+#define ROUND_NR 1000000
 
 struct page *ptr[PAGE_PTR_NR];
 uint64_t *list[PAGE_PTR_NR];
@@ -39,33 +39,6 @@ __inline__ uint64_t rdtsc(void) {
 
 unsigned long page_to_virt(struct page* page){
 	return (unsigned long)phys_to_virt(page_to_phys(page));
-}
-
-static noinline void single_access(uint64_t *old_addr)
-{
-        __asm__ volatile(
-		"mov %0, %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-                :
-                :"r"(old_addr)
-                :
-                );
-        return;
 }
 
 void MemInit(void) {
@@ -102,12 +75,11 @@ void MemInit(void) {
 }
 
 int bk_access(void *argv) {
-	volatile uint64_t next;
+	volatile uint64_t next = list_bk[0][0];
 	set_cpus_allowed_ptr(current, cpumask_of(1));
 	atomic_set(&flag, 1);
 	while (atomic_read(&flag)!=2) {
-		next = list_bk[0][0];
-		single_access((uint64_t *)next);
+		next = *(uint64_t *)next;
 	}
 	return 0;
 
@@ -115,10 +87,9 @@ int bk_access(void *argv) {
 
 int main_access(int offset) {
 	int i;
-	volatile uint64_t next;
+	volatile uint64_t next = list[0][offset];
 	for (i=0; i<ROUND_NR; i++) {
-		next = list[0][offset];
-		single_access((uint64_t *)next);
+		next = *(uint64_t *)next;
 	}
 	return 0;
 }
@@ -142,7 +113,7 @@ int __init init_addsyscall(void) {
 	while (atomic_read(&flag)!=1)
 		schedule();
 
-	for (bit=0; bit<22; bit++) {
+	for (bit=6; bit<22; bit++) {
 		offset = (1<<bit)/sizeof(uint64_t);
 		tsc = rdtsc();
 		main_access(offset);
