@@ -9,17 +9,16 @@
 #endif
 
 // Cache configurations
-#define PAGE_PTR_NR 16
 #define PAGE_ORDER 10
 #define PAGE_NR 1024
 
-#define ROUND_NR 100000
+#define ROUND_NR 10000000
 
-struct page *ptr[PAGE_PTR_NR];
-uint64_t *list[PAGE_PTR_NR];
+struct page *ptr;
+uint64_t *list;
 
-struct page *ptr_bk[PAGE_PTR_NR];
-uint64_t *list_bk[PAGE_PTR_NR];
+struct page *ptr_bk;
+uint64_t *list_bk;
 
 atomic_t flag;
 
@@ -41,73 +40,47 @@ unsigned long page_to_virt(struct page* page){
 	return (unsigned long)phys_to_virt(page_to_phys(page));
 }
 
-static noinline void single_access(uint64_t *old_addr)
+static noinline void cache_flush(uint64_t *address) {
+	__asm__ volatile("clflush (%0)"
+			 :
+			 :"r"(address)
+			 :"memory"
+			);
+	return;
+}
+
+static noinline void single_access(uint64_t *addr, uint64_t value)
 {
         __asm__ volatile(
 		"mov %0, %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
-		"mov (%%r9), %%r9\n\t"
+		"mov %1, %%r10\n\t"
+		"mov %%r10, (%%r9)\n\t"
+		"lfence\n\t"
                 :
-                :"r"(old_addr)
+                :"r"(addr), "r"(value)
                 :
                 );
         return;
 }
 
 void MemInit(void) {
-	int i, j;
-	for (i=0; i<PAGE_PTR_NR; i++){
-		ptr[i] = alloc_pages(GFP_KERNEL, PAGE_ORDER);
-		list[i] = (uint64_t *)page_to_virt(ptr[i]);
-	}
+	ptr = alloc_pages(GFP_KERNEL, PAGE_ORDER);
+	list = (uint64_t *)page_to_virt(ptr);
 
-	for (i=0; i<PAGE_PTR_NR; i++) {
-		for (j=0; j<4096*1024/sizeof(uint64_t); j++) {
-			if (i==(PAGE_PTR_NR-1))
-				list[i][j] = (uint64_t) (&list[0][j]);
-			else
-				list[i][j] = (uint64_t) (&list[i+1][j]);
-		}
-	}
+	ptr_bk = alloc_pages(GFP_KERNEL, PAGE_ORDER);
+	list_bk = (uint64_t *)page_to_virt(ptr_bk);
 
-
-	for (i=0; i<PAGE_PTR_NR; i++){
-		ptr_bk[i] = alloc_pages(GFP_KERNEL, PAGE_ORDER);
-		list_bk[i] = (uint64_t *)page_to_virt(ptr_bk[i]);
-	}
-
-	for (i=0; i<PAGE_PTR_NR; i++) {
-		for (j=0; j<4096*1024/sizeof(uint64_t); j++) {
-			if (i==(PAGE_PTR_NR-1))
-				list_bk[i][j] = (uint64_t) (&list_bk[0][j]);
-			else
-				list_bk[i][j] = (uint64_t) (&list_bk[i+1][j]);
-		}
-	}
 	return;
 }
 
 int bk_access(void *argv) {
-	volatile uint64_t next;
+	uint64_t *next;
 	set_cpus_allowed_ptr(current, cpumask_of(1));
 	atomic_set(&flag, 1);
 	while (atomic_read(&flag)!=2) {
-		next = list_bk[0][0];
-		single_access((uint64_t *)next);
+		next = &list_bk[0];
+		cache_flush(next);
+		single_access(next, 0x9);
 	}
 	return 0;
 
@@ -115,20 +88,18 @@ int bk_access(void *argv) {
 
 int main_access(int offset) {
 	int i;
-	volatile uint64_t next;
+	uint64_t *next;
 	for (i=0; i<ROUND_NR; i++) {
-		next = list[0][offset];
-		single_access((uint64_t *)next);
+		next = &list[offset];
+		cache_flush(next);
+		single_access(next, 0x9);
 	}
 	return 0;
 }
 
 void MemFree(void) {
-	int i;
-	for (i=0; i<PAGE_PTR_NR; i++)
-		__free_pages(ptr[i], PAGE_ORDER);
-	for (i=0; i<PAGE_PTR_NR; i++)
-		__free_pages(ptr_bk[i], PAGE_ORDER);
+	__free_pages(ptr, PAGE_ORDER);
+	__free_pages(ptr_bk, PAGE_ORDER);
 }
 
 int __init init_addsyscall(void) {
@@ -142,7 +113,7 @@ int __init init_addsyscall(void) {
 	while (atomic_read(&flag)!=1)
 		schedule();
 
-	for (bit=0; bit<22; bit++) {
+	for (bit=6; bit<22; bit++) {
 		offset = (1<<bit)/sizeof(uint64_t);
 		tsc = rdtsc();
 		main_access(offset);
