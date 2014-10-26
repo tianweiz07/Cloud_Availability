@@ -66,16 +66,16 @@ void MemInit(void) {
 	for (i=0; i<PAGE_PTR_NR; i++) {
 		for (j=0; j<4096*1024/sizeof(uint64_t); j++) {
 			if (i==(PAGE_PTR_NR-1))
-				list_bk[i][j] = (uint64_t) (&list[0][j]);
+				list_bk[i][j] = (uint64_t) (&list_bk[0][j]);
 			else
-				list_bk[i][j] = (uint64_t) (&list[i+1][j]);
+				list_bk[i][j] = (uint64_t) (&list_bk[i+1][j]);
 		}
 	}
 	return;
 }
 
 int bk_access(void *argv) {
-	volatile uint64_t next = list[0][0];
+	volatile uint64_t next = list_bk[0][0];
 	set_cpus_allowed_ptr(current, cpumask_of(1));
 	atomic_set(&flag, 1);
 	while (atomic_read(&flag)!=2) {
