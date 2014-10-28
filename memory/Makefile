@@ -9,7 +9,7 @@ kernel:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
 
 user:
-	$(CC) -o mem_user mem_user.c
+	$(CC) -O2 -o mem_user mem_user.c
 
 clean:
-	rm -rf *.o *.ko *.mod.* *.cmd .module* modules* Module* .*.cmd .tmp* test
+	rm -rf *.o *.ko *.mod.* *.cmd .module* modules* Module* .*.cmd .tmp* mem_user

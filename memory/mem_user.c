@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define ROUND_NR 1000
+#define ROUND_NR 1000000000
 
 void cache_flush(uint64_t *address) {
         __asm__ volatile("clflush (%0)"
@@ -56,22 +56,26 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	int bit = 6;
-	int offset = (1<<bit)/sizeof(uint64_t);
-	int i;
-	volatile uint64_t next = 0;
-	mem_chunk[0] = offset;
-	mem_chunk[offset] = 0;
 
+	int bit, offset;
+	int i;
+	volatile uint64_t next;
 	uint64_t start, end;
-	start = rdtsc();
-	
-	for (i=0; i<ROUND_NR; i++) {
-		next = mem_chunk[next];
-		cache_flush(&mem_chunk[next]);
+
+	for (bit=6; bit<31; bit++) {
+		offset = (1<<bit)/sizeof(uint64_t);
+		mem_chunk[0] = offset;
+		mem_chunk[offset] = 0;
+
+		start = rdtsc();
+		for (i=0; i<ROUND_NR; i++) {
+			next = mem_chunk[next];
+			cache_flush(&mem_chunk[next]);
+		}
+		end = rdtsc();
+
+		printf("Bit %d: %lu cycles\n", bit, (end - start));
 	}
-	end = rdtsc();
-	printf("Duration: %lu cycles\n", end - start);
 
 	return 0;
 }
