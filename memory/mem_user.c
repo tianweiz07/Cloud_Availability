@@ -11,7 +11,7 @@
 
 #define ROUND_NR 1000000000
 
-void cache_flush(uint64_t *address) {
+void cache_flush(uint8_t *address) {
         __asm__ volatile("clflush (%0)"
                          :
                          :"r"(address)
@@ -20,7 +20,7 @@ void cache_flush(uint64_t *address) {
         return;
 }
 
-void single_access(uint64_t *addr, uint64_t value)
+/*void single_access(uint8_t *addr, uint8_t value)
 {
         __asm__ volatile(
                 "mov %0, %%r9\n\t"
@@ -33,6 +33,7 @@ void single_access(uint64_t *addr, uint64_t value)
                 );
         return;
 }
+*/
 
 uint64_t rdtsc(void) {
         uint64_t a, d;
@@ -41,7 +42,7 @@ uint64_t rdtsc(void) {
 }
 
 int main(int argc, char* argv[]) {
-	uint64_t *mem_chunk = NULL;
+	uint8_t *mem_chunk = NULL;
 	uint64_t mem_size = 1024*1024*1024;
 	int fd = open("/mnt/hugepages/nebula1", O_CREAT|O_RDWR, 0755);
 	
@@ -56,21 +57,23 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
+	int i;
+	for (i=0; i<mem_size/sizeof(uint8_t); i++)
+		mem_chunk[i] = 1;
 
 	int bit, offset;
-	int i;
-	volatile uint64_t next;
+	volatile uint8_t next = 0;;
 	uint64_t start, end;
 
-	for (bit=6; bit<31; bit++) {
-		offset = (1<<bit)/sizeof(uint64_t);
-		mem_chunk[0] = offset;
-		mem_chunk[offset] = 0;
+	for (bit=6; bit<30; bit++) {
+		offset = (1<<bit)/sizeof(uint8_t);
 
 		start = rdtsc();
-		for (i=0; i<ROUND_NR; i++) {
-			next = mem_chunk[next];
-			cache_flush(&mem_chunk[next]);
+		for (i=0; i<ROUND_NR/2; i++) {
+			next += mem_chunk[0];
+			cache_flush(&mem_chunk[0]);
+			next -= mem_chunk[offset];
+			cache_flush(&mem_chunk[offset]);
 		}
 		end = rdtsc();
 
