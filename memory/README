@@ -22,7 +22,8 @@ b. ln -s /usr/share/qemu-linaro /usr/share/qemu
 
 c. xm create ubuntu-hvm.cfg 
 
-d. Using vncviewer to install the OS with the address: nebula1_ip:5900
+d. check the port for vncviewer: netstat -tap
+    Using vncviewer to install the OS with the address: nebula1_ip:port
 
 e. Restart the OS with boot order "c"
 
