@@ -104,6 +104,9 @@ void MemFree(void) {
 
 int __init init_addsyscall(void) {
 	int offset, bit;
+//	int bit1;
+//	int bank_index[4];
+//	int access_index[16];
 	uint64_t tsc;
 	printk("Module Init\n");
 	set_cpus_allowed_ptr(current, cpumask_of(0));
@@ -112,6 +115,7 @@ int __init init_addsyscall(void) {
 	kernel_thread(bk_access, NULL, 0);
 	while (atomic_read(&flag)!=1)
 		schedule();
+/*************** Step 1: identify the bank bits *****************/
 
 	for (bit=6; bit<22; bit++) {
 		offset = (1<<bit)/sizeof(uint64_t);
@@ -119,6 +123,38 @@ int __init init_addsyscall(void) {
 		main_access(offset);
 		printk("BIT %d: %llu\n", bit, rdtsc()-tsc);
 	}
+
+/*************** Step 2: identify xor **************************/
+
+//	bank_index[0] = 13;
+//	bank_index[1] = 14;
+//	bank_index[2] = 15;
+//	bank_index[3] = 17;
+//	for (i=0; i<16; i++) {
+//		access_index[i] = (((i>>3)&0x1)<<bank_index[3])/sizeof(uint64_t) +
+//				  (((i>>2)&0x1)<<bank_index[2])/sizeof(uint64_t) +
+//				  (((i>>1)&0x1)<<bank_index[1])/sizeof(uint64_t) +
+//				  (((i>>0)&0x1)<<bank_index[0])/sizeof(uint64_t);
+//}
+//      for (bit=0; bit<5; bit++) {
+//              for (bit1=bit+1; bit1<6; bit1++) {
+//                      offset = ((1<<bank_index[bit]) + (1<<bank_index[bit1]))/sizeof(uint64_t);
+//                      tsc = rdtsc();
+//                      main_access(offset);
+//                      printk("BIT %d XOR %d: %llu\n", bank_index[bit], bank_index[bit1], rdtsc()-tsc);
+//              }
+//      }
+
+/************** Step 3: perform the attacks *******************/
+
+//	tsc = jiffies + time * HZ;
+//	while (time_before(jiffies, tsc)) {
+//		for (bit=0; bit<16; j++) {
+//			cache_flush(&list[access_index[j]]);
+//			single_access(&list[access_index[j]], 0x9);
+//		}
+//	}
+
 	atomic_set(&flag, 2);
 	return 0;
 }
