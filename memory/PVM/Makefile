@@ -1,0 +1,15 @@
+KDIR := /lib/modules/$(shell uname -r)/build
+CC = gcc
+
+obj-m += memory_hit.o
+
+all: kernel user
+
+kernel:
+	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
+
+user:
+	$(CC) -O2 -o mem_user mem_user.c
+	$(CC) -O2 -o mem_user_multi  mem_user_multi.c -lpthread
+clean:
+	rm -rf *.o *.ko *.mod.* *.cmd .module* modules* Module* .*.cmd .tmp* mem_user mem_user_multi
