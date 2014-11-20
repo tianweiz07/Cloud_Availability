@@ -9,8 +9,9 @@
 #include <sys/resource.h>
 
 
-#define __NR_UnCached 188
 #define ROUND_NR 1000000
+
+/* This uses (cache_flush+access) to realize the uncached access */
 
 void cache_flush(uint8_t *address) {
         __asm__ volatile("clflush (%0)": :"r"(address) :"memory");
@@ -39,32 +40,24 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	unsigned long addr;
 	int i, j;
 	for (i=0; i<mem_size/sizeof(uint8_t); i++)
 		mem_chunk[i] = 1;
 
-	for (i=0; i<mem_size/sizeof(uint8_t); i=i+4096/sizeof(uint8_t)) {
-		addr = (unsigned long)(&mem_chunk[i]);
-		syscall(__NR_UnCached, addr);
-	}
-
 	int bit, offset;
-	volatile uint8_t next;
+	volatile uint8_t next = 0;;
 	uint64_t start, end;
 
 
 /**********************Setp1: identify the row indexes (longer time)*****************************/
 	for (bit=6; bit<30; bit++) {
 		offset = (1<<bit)/sizeof(uint8_t);
-		next = 0;
-//		mem_chunk[0] = offset;
-//		mem_chunk[offset] = 0;
+
 		start = rdtsc();
 		for (i=0; i<ROUND_NR; i++) {
-//			cache_flush(&mem_chunk[0]);
+			cache_flush(&mem_chunk[0]);
 			next += mem_chunk[0];
-//			cache_flush(&mem_chunk[offset]);
+			cache_flush(&mem_chunk[offset]);
 			next -= mem_chunk[offset];
 		}
 		end = rdtsc();

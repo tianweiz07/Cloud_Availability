@@ -18,6 +18,8 @@
 
 #define ROUND_NR 1000000
 
+/*  This is for multi-thread task */
+
 uint8_t *mem_chunk;
 int bank_index[6];
 int access_index[64];
