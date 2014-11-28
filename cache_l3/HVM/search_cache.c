@@ -11,23 +11,27 @@
 
 #define ASSOC 20
 #define SLICES 6
-#define THRESHOLD 5000 
+#define THRESHOLD 500
 
 #define WAY_SIZE 131072
 #define LINE_SIZE 64
 
-#define set 0
 #define INIT_CONFLICT_SETS 110
 #define MAX_CONFLICT_SETS 200
 
-#define TRIALS 100000
+#define TRIALS 10000
 
+#define MISS_NR 21
 
 char* head;
 char* buf;
 int conflict_sets[MAX_CONFLICT_SETS];
 static int cur_slice=0;
 int pattern_seen;
+
+int slice_nr[SLICES];
+
+int set;
 
 void initialize(int __set) {
 	int j, k;
@@ -107,61 +111,99 @@ int check(int cur_line)
 {
 	char **ptr = (char **)head;
 	unsigned int * time_buf;
-	int candidate[ASSOC+1];
-	int i,line,j;
+	int candidate[MISS_NR+5];
+	int i, j, k;
+	int line;
 	int head_line;
    
-	for (i=0; i<=ASSOC; i++)
+	for (i=0; i<=MISS_NR+5; i++)
 		candidate[i] = -1;
 	i = 0;
-	printf("----------------------------check probe results----------------------------\n");
 	do {
 		time_buf = (unsigned int *)(ptr+1);
 		if ((*time_buf) > THRESHOLD) {
 			if (i>ASSOC)
 				return -1;
 			line = ((char*)ptr - buf)/(WAY_SIZE);
-			printf("%d\t",line);
+//			printf("%d\t",line);
 			candidate[i++] = line;
 		}
 		ptr = (char **)(*ptr);
 	} while(ptr != (char **)head);
- 
-	printf("\nnumber of time exceeding threshold is %d\n", i); 
 
-	if ((i == ASSOC) || (i == (ASSOC-1))){
-		pattern_seen++;
-		if (pattern_seen == 3){
-			for (j=0; j<i; j++){
-				line = candidate[j];
-				if (cur_slice != (SLICES-1))
-					removeLine(line);
-				conflict_sets[line]=cur_slice;
-			}
-			cur_slice++;
-			return 0;
-		} else
-		return -1;
-	}
-   
-	if (i==(ASSOC+1)){
-		for (j=0; j<ASSOC+1; j++){
-			line = candidate[j];
-			if (cur_slice != (SLICES-1))
-				removeLine(line);
-			conflict_sets[line]=cur_slice;
-		}
-		cur_slice++;
+// 	if (i>0)
+//		printf("\nnumber of time exceeding threshold is %d\n", i); 
+
+	if (i==0)
 		return 0;
-  
-	} else{
-		if (i==0)
+
+	cur_slice = -1;
+	if (i<MISS_NR) {
+		pattern_seen++;
+		if (pattern_seen == 3) {
+			for (j=0; j<i; j++) {
+				line = candidate[j];
+				if (conflict_sets[line] != -1) {
+					cur_slice = conflict_sets[line];
+					break;
+				}
+			}
+			if (cur_slice == -1) {
+				for (k=0; k<SLICES; k++) {
+					if (slice_nr[k] == 0) {
+						cur_slice = k;
+						break;
+					}
+				}
+			}
+			if (slice_nr[cur_slice] + i >= MISS_NR) {
+				for (j=0; j<i; j++) {
+					line = candidate[j];
+					removeLine(line);
+					conflict_sets[line] = cur_slice;
+				}
+				slice_nr[cur_slice] += i;
+			}
+			else {
+				for (j=0; j<i; j++) {
+					line = candidate[j];
+					conflict_sets[line] = cur_slice;
+				}
+				line = candidate[i-1];
+				removeLine(line);
+				slice_nr[cur_slice] += 1;
+			}
 			return 0;
-		else{
-			pattern_seen--;
-			return -1;
 		}
+		else
+			return -1;
 	}
+	
+	if (i>=MISS_NR){
+		for (j=0; j<i; j++){
+			line = candidate[j];
+			if (conflict_sets[line] != -1) {
+				cur_slice = conflict_sets[line];
+				break;
+			}
+		}
+		if (cur_slice == -1) {
+			for (k=0; k<SLICES; k++) {
+				if (slice_nr[k] == 0) {
+					cur_slice = k;
+					break;
+				}
+			}
+		}
+
+		for (j=0; j<i; j++) {
+			line = candidate[j];
+			removeLine(line);
+			conflict_sets[line] = cur_slice;
+		}
+		slice_nr[cur_slice] += i;
+		return 0;
+	} 
 }
  
 int clearTimeBuffer()
@@ -194,21 +236,21 @@ void prime(char *ptr)
            :"esi","r8","eax");
 }
 
-void probe(char * ptr)
+void probe(char *ptr)
 { 
    __asm__("mov %0,%%r8\n\t"
            "mov %%r8,%%rsi\n\t"
            "loop1: mov %%r8, %%r9\n\t"
            "xor %%eax, %%eax\n\t"
-           "cpuid\n\t"
+           "lfence\n\t"
            "rdtsc\n\t"
            "mov %%eax,%%edi\n\t"
            "mov (%%r8), %%r8\n\t"
            "xor %%eax, %%eax\n\t"
-           "cpuid\n\t"
+           "lfence\n\t"
            "rdtsc\n\t"
            "sub %%edi, %%eax\n\t"
-           "cmp $160, %%eax\n\t"
+           "cmp $200, %%eax\n\t"
            "jle loop2\n\t"
            "incl 8(%%r9)\n\t"
            "loop2:cmp %%r8,%%rsi\n\t"
@@ -219,11 +261,21 @@ void probe(char * ptr)
            );
 } 
 
+
+uint64_t rdtsc(void) {
+        uint64_t a, d;
+        __asm__ volatile ("rdtsc" : "=a"(a));
+        return a;
+}
+
 int main (int argc, char *argv[]) {
 	cpu_set_t mask;
 	CPU_ZERO(&mask);
 	CPU_SET(0, &mask);
 	sched_setaffinity(0, sizeof(cpu_set_t), &mask);
+
+	set = atoi(argv[1]);
+	printf("set %d\n", set);
 
 	uint64_t buf_size = 1024*1024*1024;
 	int fd = open("/mnt/hugepages/nebula1", O_CREAT|O_RDWR, 0755);
@@ -246,12 +298,13 @@ int main (int argc, char *argv[]) {
 	int i, done;
 	int success = -1;
 	int time_buf_start;
-
 	int seed = 0;
 	srand(seed);
+	
+	for (i=0; i<SLICES; i++) 
+		slice_nr[i] = 0;
 
 	while (count < MAX_CONFLICT_SETS) {
-		printf("\n-----------------------checking %d--------------------------\n", count);
 		add(count);
 		pattern_seen=0;
 		do{
@@ -264,7 +317,15 @@ int main (int argc, char *argv[]) {
 			}
 			success = check(count);
 		} while(success != 0);
-		if (cur_slice >= (SLICES))
+
+		done = 1;
+		for (i=0; i<SLICES; i++) {
+			if (slice_nr[i] < MISS_NR) {
+				done = 0;
+				break;
+			}
+		}
+		if (done == 1)
 			break;
 		count++;
 	}
@@ -272,21 +333,17 @@ int main (int argc, char *argv[]) {
 	for (count=0; count<(SLICES); count++){
 		i = 0;
 		done = 0;
-       
-		while(done<ASSOC){
+		while(done<MISS_NR){
 			if (conflict_sets[i] == count){
-				if ((done == ASSOC-1))
+				if ((done == MISS_NR-1))
 					printf("%d\n",i);
 				else 
-					printf("%d, ",i);
+					printf("%d ",i);
 				done++;
 			}
 			i++;
 		}
 	}
-
-	for (count=0; count<160; count++)
-		printf("%d\n", conflict_sets[count]);
-
+	
 	munmap(buf, buf_size);
 }
