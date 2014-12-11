@@ -11,7 +11,7 @@
 
 #define ASSOC 20
 #define SLICES 6
-#define THRESHOLD 3000
+#define THRESHOLD 500
 
 #define WAY_SIZE 131072
 #define LINE_SIZE 64
@@ -21,15 +21,11 @@
 
 #define TRIALS 10000
 
-#define MISS_NR 21
-
 char* head;
 char* buf;
 int conflict_sets[MAX_CONFLICT_SETS];
 static int cur_slice=0;
 int pattern_seen;
-
-int slice_nr[SLICES];
 
 int set;
 
@@ -111,100 +107,60 @@ int check(int cur_line)
 {
 	char **ptr = (char **)head;
 	unsigned int * time_buf;
-	int candidate[MISS_NR+5];
-	int i, j, k;
+	int candidate[ASSOC+1];
+	int i, j;
 	int line;
 	int head_line;
-
-	for (i=0; i<=MISS_NR+5; i++)
+   
+	for (i=0; i<=ASSOC; i++)
 		candidate[i] = -1;
 	i = 0;
 	do {
 		time_buf = (unsigned int *)(ptr+1);
 		if ((*time_buf) > THRESHOLD) {
-			if (i>ASSOC) {
+			if (i>ASSOC)
 				return -1;
-			}
 			line = ((char*)ptr - buf)/(WAY_SIZE);
+//			printf("%d\t",line);
 			candidate[i++] = line;
 		}
 		ptr = (char **)(*ptr);
 	} while(ptr != (char **)head);
 
 // 	if (i>0)
-//		printf("\nnumber of time exceeding threshold is %d\n", i); 
-
+//		printf("\nnumber of time exceeding threshold is %d, count: %d\n", i, cur_line); 
+	
 	if (i==0)
 		return 0;
 
-
-	cur_slice = -1;
-	if (i<MISS_NR) {
+	if ((i == ASSOC)||(i==(ASSOC-1))||(i==(ASSOC-2))) {
 		pattern_seen++;
 		if (pattern_seen == 3) {
 			for (j=0; j<i; j++) {
 				line = candidate[j];
-				if (conflict_sets[line] != -1) {
-					cur_slice = conflict_sets[line];
-					break;
-				}
-			}
-			if (cur_slice == -1) {
-				for (k=0; k<SLICES; k++) {
-					if (slice_nr[k] == 0) {
-						cur_slice = k;
-						break;
-					}
-				}
-			}
-			if (slice_nr[cur_slice] + i >= MISS_NR) {
-				for (j=0; j<i; j++) {
-					line = candidate[j];
+				if (cur_slice != (SLICES-1)) 
 					removeLine(line);
-					conflict_sets[line] = cur_slice;
-				}
-				slice_nr[cur_slice] += i;
+				conflict_sets[line] = cur_slice;
 			}
-			else {
-				for (j=0; j<i; j++) {
-					line = candidate[j];
-					conflict_sets[line] = cur_slice;
-				}
-				line = candidate[i-1];
-				removeLine(line);
-				slice_nr[cur_slice] += 1;
-			}
+			cur_slice++;
 			return 0;
 		}
 		else
 			return -1;
 	}
 	
-	if (i>=MISS_NR){
-		for (j=0; j<i; j++){
+	if (i== (ASSOC+1)){
+		for (j=0; j<ASSOC+1; j++){
 			line = candidate[j];
-			if (conflict_sets[line] != -1) {
-				cur_slice = conflict_sets[line];
-				break;
-			}
-		}
-		if (cur_slice == -1) {
-			for (k=0; k<SLICES; k++) {
-				if (slice_nr[k] == 0) {
-					cur_slice = k;
-					break;
-				}
-			}
-		}
-
-		for (j=0; j<i; j++) {
-			line = candidate[j];
-			removeLine(line);
+			if (cur_slice != (SLICES-1)) 
+				removeLine(line);
 			conflict_sets[line] = cur_slice;
 		}
-		slice_nr[cur_slice] += i;
+		cur_slice++;
 		return 0;
 	} 
+	else
+		return -1;
 }
  
 int clearTimeBuffer()
@@ -251,7 +207,7 @@ void probe(char *ptr)
            "lfence\n\t"
            "rdtsc\n\t"
            "sub %%edi, %%eax\n\t"
-           "cmp $200, %%eax\n\t"
+           "cmp $150, %%eax\n\t"
            "jle loop2\n\t"
            "incl 8(%%r9)\n\t"
            "loop2:cmp %%r8,%%rsi\n\t"
@@ -302,9 +258,6 @@ int main (int argc, char *argv[]) {
 	int seed = 0;
 	srand(seed);
 	
-	for (i=0; i<SLICES; i++) 
-		slice_nr[i] = 0;
-
 	while (count < MAX_CONFLICT_SETS) {
 		add(count);
 		pattern_seen=0;
@@ -319,31 +272,19 @@ int main (int argc, char *argv[]) {
 			success = check(count);
 		} while(success != 0);
 
-		done = 1;
-		for (i=0; i<SLICES; i++) {
-			if (slice_nr[i] < MISS_NR) {
-				done = 0;
-				break;
-			}
-		}
-		if (done == 1)
+		if (cur_slice >= SLICES)
 			break;
 		count++;
 	}
 
 	for (count=0; count<(SLICES); count++){
 		i = 0;
-		done = 0;
-		while(done<MISS_NR){
-			if (conflict_sets[i] == count){
-				if ((done == MISS_NR-1))
-					printf("%d\n",i);
-				else 
-					printf("%d,",i);
-				done++;
-			}
+		while(i<MAX_CONFLICT_SETS){
+			if (conflict_sets[i] == count)
+				printf("%d,	",i);
 			i++;
 		}
+		printf("\n");
 	}
 	
 	munmap(buf, buf_size);
