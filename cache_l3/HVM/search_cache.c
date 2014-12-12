@@ -122,8 +122,9 @@ int check(int cur_line)
 	do {
 		time_buf = (unsigned int *)(ptr+1);
 		if ((*time_buf) > THRESHOLD) {
-			if (i>ASSOC) {
-				return -1;
+			if (i>MISS_NR) {
+				break;
+//				return -1;
 			}
 			line = ((char*)ptr - buf)/(WAY_SIZE);
 			candidate[i++] = line;
@@ -132,7 +133,7 @@ int check(int cur_line)
 	} while(ptr != (char **)head);
 
 // 	if (i>0)
-//		printf("\nnumber of time exceeding threshold is %d\n", i); 
+//		printf("cur_line: %d, number of time exceeding threshold is %d\n", cur_line, i); 
 
 	if (i==0)
 		return 0;
