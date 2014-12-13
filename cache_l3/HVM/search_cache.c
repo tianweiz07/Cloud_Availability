@@ -340,7 +340,7 @@ int main (int argc, char *argv[]) {
 				if ((done == MISS_NR-1))
 					printf("%d\n",i);
 				else 
-					printf("%d,",i);
+					printf("%d ",i);
 				done++;
 			}
 			i++;
