@@ -124,7 +124,7 @@ int main (int argc, char *argv[]) {
 	assoc = atoi(argv[3]);
 
         int i, j;
-        FILE *set_file = fopen("/root/conflict_set", "r");
+        FILE *set_file = fopen("/root/conflict_sets", "r");
         if (!set_file)
                 printf("error\n");
 
@@ -156,9 +156,11 @@ int main (int argc, char *argv[]) {
                 return 0;
         }
 
-	initialize();
-	unsigned int total_time = 0;
+	unsigned int total_time;
+
+	total_time = 0;
 	i = 0;
+	initialize();
 	while (i < TRIALS){
 		prime();
 		probe();
