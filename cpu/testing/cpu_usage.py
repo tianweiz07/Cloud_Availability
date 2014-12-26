@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# File Name: process.py
+# File Name: cpu_usage.py
 
 """
 	This file is used to process the data from the xentrace output
@@ -40,11 +40,11 @@ def process(tid_list):
 		activity_list = activity.split(' ')
 		for i in range(len(activity_list)):
 			if (activity_list[i] == "old_domid"):
-				domid = activity_list[i+2]
-				period = (int)activity_list[i+5]
-				print '{0}: {1}'.format(domid, period)
+				domid = int((activity_list[i+2])[:-1], 0)
 				for j in range(len(tid_list)):
-					if (domid == tid_list[j]):
+					if (domid == (int)(tid_list[j], 0)):
+						period = (int)(activity_list[i+5])
+						print '{0}: {1}'.format(domid, period)
 						runtime_list[j] += period
 
 	print "------------------------Relative Usage---------------------------"
@@ -53,7 +53,7 @@ def process(tid_list):
 		total_time = total_time + runtime_list[i]
 
 	for i in range(len(tid_list)):
-		ratio_usage = runtime_list[i] / total_time
+		ratio_usage = runtime_list[i] * 1.0 / total_time
 		print '{0}: {1}'.format(tid_list[i], ratio_usage)
 
 
@@ -62,9 +62,6 @@ def main(argv):
 	if (len(tid_list) == 0):
 		print 'Input VM id'
 		sys.exit()
-
-	for i in range(len(tid_list)):
-		tid_list[i] = tid_list[i] + ','
 
 	execute_cmd(CPU_MASK, EVENT_MASK, TIME)
 
