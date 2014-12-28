@@ -1,6 +1,6 @@
 CC = gcc
 LDFLAGS = -lpthread
-TARGET1 = serial_stream
+TARGET1 = sequence_stream
 TARGET2 = random_stream
 RM = rm -rf
 
