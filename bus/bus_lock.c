@@ -12,33 +12,15 @@
 // Cache configurations
 #define CACHE_LINE_SIZE 64
 
-// Timing parameters
-#ifdef __i386
-__inline__ uint64_t rdtsc(void) {
-	uint64_t x;
-	__asm__ volatile ("rdtsc" : "=A" (x));
-	return x;
-}
-#elif __amd64
-__inline__ uint64_t rdtsc(void) {
-	uint64_t a, d;
-	__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
-	return (d<<32) | a;
-}
-#endif
 
 // Syscall information
 static uint64_t SYS_CALL_TABLE_ADDR = 0xffffffff81801320;
+
 #define __NR_BusLock 188
 
-/*
-static noinline void cache_flush(char *address) {
-	__asm__ volatile ("clflush (%0)"
-			  :
-			  :"r"(address)
-			  :"memory");
-}
-*/
+struct page *ptr;
+char *cache_list;
+
 
 static noinline void atomic_fetch(int *read_address, int value) {
 	asm volatile (
@@ -48,8 +30,12 @@ static noinline void atomic_fetch(int *read_address, int value) {
 		      :"memory");
 }
 
-struct page *ptr;
-char *cache_list;
+uint64_t rdtsc(void) {
+	uint64_t a, d;
+	__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+	return (d<<32) | a;
+}
+
 
 unsigned long page_to_virt(struct page* page){
 	return (unsigned long)phys_to_virt(page_to_phys(page));
@@ -83,6 +69,19 @@ void SetPageRO(struct page* page)
 		BUG();
 }
 
+void SetPageExe(struct page* page)
+{
+        pte_t *pte, ptev;
+        unsigned long address = (unsigned long)phys_to_virt(page_to_phys(page));
+        unsigned int level;
+
+        pte = lookup_address(address, &level);
+        BUG_ON(pte == NULL);
+
+        ptev = pte_mkexec(*pte);
+        if (HYPERVISOR_update_va_mapping(address, ptev, 0))
+               BUG();
+}
 
 void CacheInit(void) {
 	ptr = alloc_pages(GFP_KERNEL, 1);
@@ -94,16 +93,15 @@ void CacheFree(void) {
 	__free_pages(ptr, 1);
 }
 
-asmlinkage void sys_BusLock(int t, int cpu_id) {
+asmlinkage void sys_BusLock(int t) {
 	unsigned long tsc;
 	tsc = jiffies + t * HZ;
+	set_cpus_allowed_ptr(current, cpumask_of(0));
 	while (time_before(jiffies, tsc)) {
-		atomic_fetch((int *)(cache_list + (cpu_id + 1) * CACHE_LINE_SIZE - 1), 0x0);
+		atomic_fetch((int *)(cache_list + CACHE_LINE_SIZE - 1), 0x0);
 	}
 	return;
 }
-
-
 
 void **my_sys_call_table;
 void (*temp_func)(void);
