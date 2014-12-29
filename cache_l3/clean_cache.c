@@ -66,7 +66,7 @@ void initialize() {
 					*(ptr2+1) = (char*)(ptr1+1);
 				}
 
-				idx1 = conflict_sets[i][k][0];
+				idx1 = conflict_sets[i][j][0];
 				head[set_checked] = &buf[idx1*WAY_SIZE+i*LINE_SIZE];
 
 				set_checked ++;
@@ -89,6 +89,7 @@ void *clean(void *index_ptr) {
 	}
 	int i;
 	time_t end_time = time(NULL) + total_time;
+	printf("Cleansing starts at Core #%d\n", *index);
 	while(time(NULL) < end_time) {
 		for (i=total_conflict_num/num_thread*(*index); i<total_conflict_num/num_thread*(*index+1); i++) {
 			__asm__("mov %0,%%r8\n\t"
