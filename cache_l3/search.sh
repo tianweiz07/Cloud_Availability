@@ -1,5 +1,5 @@
 #!/bin/bash
-for i in `seq 0 2047`;
+for i in `seq 0 2`;
 do
-	./search_cache $i
+	./search_cache $i >> conflict_sets
 done
