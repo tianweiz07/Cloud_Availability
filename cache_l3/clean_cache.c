@@ -20,7 +20,8 @@
 #define LINE_SIZE 64
 #define SET_NUM (WAY_SIZE/LINE_SIZE)
 
-#define NUM_CPU 4
+time_t total_time;
+int num_thread;
 
 char *buf;
 char **head;
@@ -87,8 +88,9 @@ void *clean(void *index_ptr) {
 		return NULL;
 	}
 	int i;
-	while (1) {
-		for (i=total_conflict_num/NUM_CPU*(*index); i<total_conflict_num/NUM_CPU*(*index+1); i++) {
+	time_t end_time = time(NULL) + total_time;
+	while(time(NULL) < end_time) {
+		for (i=total_conflict_num/num_thread*(*index); i<total_conflict_num/num_thread*(*index+1); i++) {
 			__asm__("mov %0,%%r8\n\t"
 				"mov %%r8,%%rsi\n\t"
 				"xor %%eax, %%eax\n\t"
@@ -160,21 +162,25 @@ int main (int argc, char *argv[]) {
 
 	initialize();
 
-        int cpu_id_0 = 0;
-        int cpu_id_1 = 1;
-        int cpu_id_2 = 2;
-        int cpu_id_3 = 3;
-        pthread_t mem_thread_0;
-        pthread_t mem_thread_1;
-        pthread_t mem_thread_2;
-        pthread_t mem_thread_3;
-        pthread_create(&mem_thread_0, NULL, clean, &cpu_id_0);
-        pthread_create(&mem_thread_1, NULL, clean, &cpu_id_1);
-        pthread_create(&mem_thread_2, NULL, clean, &cpu_id_2);
-        pthread_create(&mem_thread_3, NULL, clean, &cpu_id_3);
-        pthread_join(mem_thread_0, NULL);
-        pthread_join(mem_thread_1, NULL);
-        pthread_join(mem_thread_2, NULL);
+	num_thread = atoi(argv[1]);
+	total_time = atoi(argv[2]);
 
+	if ((num_thread > 12)||(num_thread < 0)) {
+                printf("# of Threads are not corrected\n");
+                return 0;
+        }
+
+	int cpu_id[12];
+	pthread_t llc_thread[12];
+
+        for (i=0; i<num_thread; i++) {
+                cpu_id[i] = i*2;
+                pthread_create(&llc_thread[i], NULL, clean, &cpu_id[i]);
+        }
+
+        for (i=0; i<num_thread; i++) {
+                pthread_join(llc_thread[i], NULL);
+        }
+	
 	munmap(buf, buf_size);
 }
