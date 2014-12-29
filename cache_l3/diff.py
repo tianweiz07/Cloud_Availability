@@ -18,6 +18,8 @@ def process():
 	activities2 = data2.readlines()
 	data2.close()
 
+	data3 = open('diff_assoc_num', 'w')
+
 	for i in range(2048):
 		first0 = int(activities1[i].split(' ')[0])
 		second0 = int(activities2[i].split(' ')[0])
@@ -37,18 +39,8 @@ def process():
 		first5 = int(activities1[i].split(' ')[5])
 		second5 = int(activities2[i].split(' ')[5])
 		diff5 = second5 - first5
-#		if (diff0 < 1000):
-#			diff0 = 0
-#		if (diff1 < 1000):
-#			diff1 = 0
-#		if (diff2 < 1000):
-#			diff2 = 0
-#		if (diff3 < 1000):
-#			diff3 = 0
-#		if (diff4 < 1000):
-#			diff4 = 0
-#		if (diff5 < 1000):
-#			diff5 = 0
-		print diff0, diff1, diff2, diff3, diff4, diff5
-	
+		
+		data3.write("%d %d %d %d %d %d\n" % (diff0, diff1, diff2, diff3, diff4, diff5))
+	data3.close()
+
 process()

@@ -120,8 +120,21 @@ int main (int argc, char *argv[]) {
         CPU_SET(0, &mask);
         sched_setaffinity(0, sizeof(cpu_set_t), &mask);
 
+	FILE *output;
+
         set = atoi(argv[1]);
 	slice = atoi(argv[2]);
+	int mode = atoi(argv[3]);
+
+	if (mode == 0) 
+		output = fopen("original_assoc_num", "at");
+	if (mode == 1)
+		output = fopen("interfere_assoc_num", "at");
+
+	if (!output) {
+		printf("error open file\n");
+		return 0;
+	}
 
         int i, j;
         FILE *set_file = fopen("/root/conflict_sets", "r");
@@ -170,6 +183,10 @@ int main (int argc, char *argv[]) {
 			i++;
 		} 
 	} while (total_time/TRIALS > THRESHOLD);
-	printf("%d ", assoc);
+	fprintf(output, "%d ", assoc);
+	if (slice == SLICES - 1)
+		fprintf(output, "\n");
+
+	fclose(output);
 	munmap(buf, buf_size);
 }

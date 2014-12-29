@@ -276,8 +276,14 @@ int main (int argc, char *argv[]) {
 	CPU_SET(0, &mask);
 	sched_setaffinity(0, sizeof(cpu_set_t), &mask);
 
+	FILE *output = fopen("conflict_sets", "at");
+	if (!output) {
+		printf("file open error!\n");
+		return 0;
+	}
+
 	set = atoi(argv[1]);
-	printf("set %d\n", set);
+	fprintf(output, "set %d\n", set);
 
 	uint64_t buf_size = 1024*1024*1024;
 	int fd = open("/mnt/hugepages/nebula1", O_CREAT|O_RDWR, 0755);
@@ -338,9 +344,9 @@ int main (int argc, char *argv[]) {
 		while(done<MISS_NR){
 			if (conflict_sets[i] == count){
 				if ((done == MISS_NR-1))
-					printf("%d\n",i);
+					fprintf(output, "%d\n",i);
 				else 
-					printf("%d ",i);
+					fprintf(output, "%d ",i);
 				done++;
 			}
 			i++;
@@ -348,4 +354,5 @@ int main (int argc, char *argv[]) {
 	}
 	
 	munmap(buf, buf_size);
+	fclose(output);
 }
