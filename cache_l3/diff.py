@@ -9,12 +9,12 @@ import os
 import string
 import sys
 
-def process(file1, file2):
-	data1 = open(file1, 'r')
+def process():
+	data1 = open('original_assoc_num', 'r')
 	activities1 = data1.readlines()
 	data1.close()
 
-	data2 = open(file2, 'r')
+	data2 = open('interfere_assoc_num', 'r')
 	activities2 = data2.readlines()
 	data2.close()
 
@@ -51,4 +51,4 @@ def process(file1, file2):
 #			diff5 = 0
 		print diff0, diff1, diff2, diff3, diff4, diff5
 	
-process(sys.argv[1], sys.argv[2])
+process()
