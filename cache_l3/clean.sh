@@ -1,2 +1,2 @@
 #!/bin/bash
-./clean_cache
+./clean_cache $1 $2
