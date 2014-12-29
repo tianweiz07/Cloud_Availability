@@ -24,7 +24,6 @@
 
 char *buf;
 char **head;
-char **tail;
 
 
 int set_index[SET_NUM][SLICES];  // Indicate if these sets are polluted (1) or not (2)
@@ -108,9 +107,9 @@ void *clean(void *index_ptr) {
 
 int main (int argc, char *argv[]) {
         int i, j, k;
-        FILE *set_file = fopen("/root/conflict_sets", "r");
-        FILE *diff_file = fopen("/root/diff_assoc_num", "r");
-        FILE *orig_file = fopen("/root/original_assoc_num", "r");
+        FILE *set_file = fopen("conflict_sets", "r");
+        FILE *diff_file = fopen("diff_assoc_num", "r");
+        FILE *orig_file = fopen("original_assoc_num", "r");
 	
         if ((!set_file)||(!diff_file)||(!orig_file)) {
                 printf("error\n");
@@ -158,7 +157,6 @@ int main (int argc, char *argv[]) {
         }
 
 	head = (char **)calloc(total_conflict_num, sizeof(char *));
-	tail = (char **)calloc(total_conflict_num, sizeof(char *));
 
 	initialize();
 
