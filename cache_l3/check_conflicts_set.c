@@ -137,7 +137,7 @@ int main (int argc, char *argv[]) {
 	}
 
         int i, j;
-        FILE *set_file = fopen("/root/conflict_sets", "r");
+        FILE *set_file = fopen("conflict_sets", "r");
         if (!set_file)
                 printf("error\n");
 
