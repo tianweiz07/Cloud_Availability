@@ -53,7 +53,7 @@ void initialize() {
 			ptr2 = (char **)*ptr1;
 			*(ptr2+1) = (char*)(ptr1+1);
 		}
-		head[i] = &buf[i*line_nr];
+		head[i] = &buf[i*line_nr*LINE_SIZE];
 
 	}
 } 
