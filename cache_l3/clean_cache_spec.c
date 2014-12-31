@@ -95,12 +95,10 @@ void *clean(void *index_ptr) {
 			__asm__("mov %0,%%r8\n\t"
 				"mov %%r8,%%rsi\n\t"
 				"xor %%eax, %%eax\n\t"
-				"cpuid\n\t"
 				"loop: mov (%%r8), %%r8\n\t"
 				"cmp %%r8,%%rsi\n\t"
 				"jne loop\n\t"
 				"xor %%eax, %%eax\n\t"
-				"cpuid\n\t"
 				:
 				:"r"(head[i])
 				:"esi","r8","eax");
