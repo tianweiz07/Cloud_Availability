@@ -10,7 +10,7 @@ import string
 import sys 
 import getopt
 
-CPU_MASK = "0x00000000"
+CPU_MASK = "0x00000001"
 EVENT_MASK = "0x2f000"
 TIME = "10"
 
