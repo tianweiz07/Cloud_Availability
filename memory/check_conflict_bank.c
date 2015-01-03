@@ -23,12 +23,13 @@
 #define LINE_SIZE 64
 
 uint8_t *mem_chunk;
+uint64_t mem_size; 
 
 int bank_index[6];
 int access_index[64];
 int **index_array;
 int cpu_index[CPU_NR];
-
+ 
 time_t total_time;
 
 void cache_flush(uint8_t *address) {
@@ -167,28 +168,13 @@ void channel_index_identify() {
 		index_array[i] = (int *)malloc(SIZE/LINE_SIZE*sizeof(int));
 
 	int index_value;
-	int channel_index = 0;
 
-	printf("Low timing indicates the channel indexes:\n");
 	for (k=0; k<CPU_NR/2; k++) {
 		i = 0; 
 		j = 0;
 		while (j<SIZE/LINE_SIZE) {
 			index_value = i * LINE_SIZE;
-			if ((int)((index_value>>bank_index[channel_index])&0x1) == 0) {
-				index_array[k][j] = index_value/sizeof(uint8_t);
-				j++;
-			}
-			i++;
-		}
-	}
-
-	for (k=CPU_NR/2; k<CPU_NR; k++) {
-		i = 0; 
-		j = 0;
-		while (j<SIZE/LINE_SIZE) {
-			index_value = i * LINE_SIZE;
-			if ((int)((index_value>>bank_index[channel_index])&0x1) == 1) {
+			if ((int)(index_value&access_index[63]) == 0) {
 				index_array[k][j] = index_value/sizeof(uint8_t);
 				j++;
 			}
@@ -202,20 +188,37 @@ void channel_index_identify() {
 	for (k=CPU_NR/2; k<CPU_NR; k++) 
 		cpu_index[k] = (k-CPU_NR/2)*2+1;
 
-	total_time = 0;
+	int channel_index;
 	int cpu_id[CPU_NR];
 	pthread_t mem_thread[CPU_NR];
+	printf("Low timing indicates the channel indexes:\n");
+	for (channel_index = 0; channel_index<6; channel_index ++) {
+		for (k=CPU_NR/2; k<CPU_NR; k++) {
+			i = mem_size/LINE_SIZE/2; 
+			j = 0;
+			while (j<SIZE/LINE_SIZE) {
+				index_value = i * LINE_SIZE;
+				if ((int)(index_value&access_index[63]) == (int)((0x1)<<bank_index[channel_index])) {
+					index_array[k][j] = index_value/sizeof(uint8_t);
+					j++;
+				}
+				i++;
+			}
+		}
 
-	for (i=0; i<CPU_NR; i++) {
-		cpu_id[i] = i;
-		pthread_create(&mem_thread[i], NULL, mem_access, &cpu_id[i]);
-	}
+		total_time = 0;
+
+		for (i=0; i<CPU_NR; i++) {
+			cpu_id[i] = i;
+			pthread_create(&mem_thread[i], NULL, mem_access, &cpu_id[i]);
+		}
 	
-	for (i=0; i<CPU_NR; i++) {
-		pthread_join(mem_thread[i], NULL);
-	}
+		for (i=0; i<CPU_NR; i++) {
+			pthread_join(mem_thread[i], NULL);
+		}
 
-	printf("Bit %d: %lld seconds\n", bank_index[channel_index], (long long int)total_time);
+		printf("Bit %d: %lld seconds\n", bank_index[channel_index], (long long int)total_time);
+	}
 
 	return;
 
@@ -224,7 +227,7 @@ void channel_index_identify() {
 
 int main(int argc, char* argv[]) {
 
-	uint64_t mem_size = 1024*1024*1024;
+	mem_size = 1024*1024*1024;
 	int fd = open("/mnt/hugepages/nebula1", O_CREAT|O_RDWR, 0755);
 	
 	if (fd < 0) {
@@ -261,46 +264,4 @@ int main(int argc, char* argv[]) {
 	munmap(mem_chunk, mem_size);
 	return 0;
 
-/**********************Setp1: identify the row indexes (longer time)*****************************/
-/**********************Setp2: identify the bank indexes (shoter time)*****************************/
-
-/**********************Setp3: identify the XOR relation*****************************/
-
-/**********************Setp3: perform the attacks*****************************/
-/*
-
-	int cpu_id_0 = 0;
-	int cpu_id_1 = 1;
-	int cpu_id_2 = 2;
-	int cpu_id_3 = 3;
-	int cpu_id_4 = 4;
-	int cpu_id_5 = 5;
-	int cpu_id_6 = 6;
-	int cpu_id_7 = 7;
-	pthread_t mem_thread_0;
-	pthread_t mem_thread_1;
-	pthread_t mem_thread_2;
-	pthread_t mem_thread_3;
-	pthread_t mem_thread_4;
-	pthread_t mem_thread_5;
-	pthread_t mem_thread_6;
-	pthread_t mem_thread_7;
-
-	pthread_create(&mem_thread_0, NULL, mem_hit, &cpu_id_0);
-	pthread_create(&mem_thread_1, NULL, mem_hit, &cpu_id_1);
-	pthread_create(&mem_thread_2, NULL, mem_hit, &cpu_id_2);
-	pthread_create(&mem_thread_3, NULL, mem_hit, &cpu_id_3);
-	pthread_create(&mem_thread_4, NULL, mem_hit, &cpu_id_4);
-	pthread_create(&mem_thread_5, NULL, mem_hit, &cpu_id_5);
-	pthread_create(&mem_thread_6, NULL, mem_hit, &cpu_id_6);
-	pthread_create(&mem_thread_7, NULL, mem_hit, &cpu_id_7);
-	pthread_join(mem_thread_0, NULL);
-	pthread_join(mem_thread_1, NULL);
-	pthread_join(mem_thread_2, NULL);
-	pthread_join(mem_thread_3, NULL);
-	pthread_join(mem_thread_4, NULL);
-	pthread_join(mem_thread_5, NULL);
-	pthread_join(mem_thread_6, NULL);
-	pthread_join(mem_thread_7, NULL);
-*/
 }
