@@ -93,7 +93,7 @@ void *stream_access(void *index_ptr) {
 
   start_time = time(NULL);
   for (i=0; i < traversals; i++) {
-    for (j=size/line_size/num_thread*((*index)/2); j < size/line_size/num_thread*((*index)/2+1); j++) {
+    for (j=size/line_size/num_thread*((*index)); j < size/line_size/num_thread*((*index)+1); j++) {
       target_array[index_array[j]] = array[index_array[j]];
     }
   }
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 
 	int i;
 	for (i=0; i<num_thread; i++) {
-		cpu_id[i] = i*2;
+		cpu_id[i] = i;
 	        pthread_create(&mem_thread[i], NULL, stream_access, &cpu_id[i]);
 	}
 
