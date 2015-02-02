@@ -23,7 +23,7 @@
 #define START_SET 0
 
 
-time_t total_time;
+int traversal;
 int num_thread;
 
 char *buf;
@@ -31,7 +31,7 @@ char **head;
 
 void initialize() {
 	char **ptr1, **ptr2;
-	int i, j, k;
+	int i, j, k, r;
 	char *tmp;
 	int idx1, idx2;
 
@@ -49,8 +49,9 @@ void initialize() {
 
 		for (j=(i+1)*block_nr-1; j>=i*block_nr; j--) {
 			for (k=(START_SET+line_nr-1); k>=START_SET+1; k--) {
+				r = rand()%k;
 				ptr1 = (char**)&buf[j*WAY_SIZE+k*LINE_SIZE];
-				ptr2 = (char**)&buf[j*WAY_SIZE+(k-1)*LINE_SIZE];
+				ptr2 = (char**)&buf[j*WAY_SIZE+r*LINE_SIZE];
 				tmp = *ptr1;
 				*ptr1 = *ptr2;
 				*ptr2 = tmp;
@@ -58,8 +59,9 @@ void initialize() {
 		}
 
 		for (j=(i+1)*block_nr-1; j>=i*block_nr+1; j--) {
+			r = rand()%j;
 			ptr1 = (char**)&buf[j*WAY_SIZE+START_SET*LINE_SIZE];
-			ptr2 = (char**)&buf[(j-1)*WAY_SIZE+(START_SET+line_nr-1)*LINE_SIZE];
+			ptr2 = (char**)&buf[r*WAY_SIZE+(START_SET+line_nr-1)*LINE_SIZE];
 			tmp = *ptr1;
 			*ptr1 = *ptr2;
 			*ptr2 = tmp;
@@ -74,7 +76,7 @@ void initialize() {
 			}
 		}
 
-		head[i] = &buf[i*block_nr*LINE_SIZE];
+		head[i] = &buf[i*block_nr*WAY_SIZE+START_SET*LINE_SIZE];
 
 	}
 } 
@@ -90,9 +92,9 @@ void *clean(void *index_ptr) {
 		return NULL;
 	}
 	int i;
-	time_t end_time = time(NULL) + total_time;
-	printf("Begin Cleansing\n");
-	while(time(NULL) < end_time) {
+	time_t start_time, end_time;
+	start_time = time(NULL);
+	for (i=0; i<traversal; i++) {
 		__asm__("mov %0,%%r8\n\t"
 			"mov %%r8,%%rsi\n\t"
 			"xor %%eax, %%eax\n\t"
@@ -104,6 +106,8 @@ void *clean(void *index_ptr) {
 			:"r"(head[*index])
 			:"esi","r8","eax");
 	}
+	end_time = time(NULL);
+	printf("Time diff: %lld\n", (long long int)end_time-(long long int)start_time);
 }
 
 int main (int argc, char *argv[]) {
@@ -122,7 +126,7 @@ int main (int argc, char *argv[]) {
         }
 
 	num_thread = atoi(argv[1]);
-	total_time = atoi(argv[2]);
+	traversal = atoi(argv[2]);
 
 	head = (char **)calloc(num_thread, sizeof(char *));
 	initialize();
@@ -138,7 +142,7 @@ int main (int argc, char *argv[]) {
 
 	int i;
         for (i=0; i<num_thread; i++) {
-                cpu_id[i] = i*2;
+                cpu_id[i] = i;
                 pthread_create(&llc_thread[i], NULL, clean, &cpu_id[i]);
         }
 

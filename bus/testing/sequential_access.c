@@ -19,11 +19,11 @@
 #define WAY_SIZE 131072
 #define LINE_SIZE 64
 #define CACHE_SIZE (WAY_SIZE*SLICES*ASSOC)
-#define ASSOC_NUM 40
-#define START_SET 150
+#define BUFFER_SIZE 524288
+#define START_SET 0
 
 
-time_t total_time;
+int traversal;
 int num_thread;
 
 char *buf;
@@ -35,29 +35,50 @@ void initialize() {
 	char *tmp;
 	int idx1, idx2;
 
+	int block_nr = SLICES*ASSOC/num_thread;
+	int line_nr = BUFFER_SIZE/(SLICES*ASSOC)/LINE_SIZE;
+
 	for (i=0; i<num_thread; i++) {
-		for (j=0; j<ASSOC_NUM; j++) {
-			ptr1 = (char **)&buf[j*WAY_SIZE+(i+START_SET)*LINE_SIZE];
-			*ptr1 = (char *)ptr1;
+		for (j=i*block_nr; j<(i+1)*block_nr; j++) {
+			for (k=START_SET; k<(START_SET+line_nr); k++) {
+				ptr1 = (char **)&buf[j*WAY_SIZE+k*LINE_SIZE];
+				*ptr1 = (char *)ptr1;
+
+			}
 		}
 
-		for (j=ASSOC_NUM-1; j>0; j--) {
-			ptr1 = (char**)&buf[j*WAY_SIZE+(i+START_SET)*LINE_SIZE];
-			ptr2 = (char**)&buf[(j-1)*WAY_SIZE+(i+START_SET)*LINE_SIZE];
+		for (j=(i+1)*block_nr-1; j>=i*block_nr; j--) {
+			for (k=(START_SET+line_nr-1); k>=START_SET+1; k--) {
+				ptr1 = (char**)&buf[j*WAY_SIZE+k*LINE_SIZE];
+				ptr2 = (char**)&buf[j*WAY_SIZE+(k-1)*LINE_SIZE];
+				tmp = *ptr1;
+				*ptr1 = *ptr2;
+				*ptr2 = tmp;
+			}
+		}
+
+		for (j=(i+1)*block_nr-1; j>=i*block_nr+1; j--) {
+			ptr1 = (char**)&buf[j*WAY_SIZE+START_SET*LINE_SIZE];
+			ptr2 = (char**)&buf[(j-1)*WAY_SIZE+(START_SET+line_nr-1)*LINE_SIZE];
 			tmp = *ptr1;
 			*ptr1 = *ptr2;
 			*ptr2 = tmp;
+
 		}
 
-		for (j=0; j<ASSOC_NUM; j++) {
-			ptr1 = (char **)&buf[j*WAY_SIZE+(i+START_SET)*LINE_SIZE];
-			ptr2 = (char **)*ptr1;
-			*(ptr2+1) = (char*)(ptr1+1);
+		for (j=i*block_nr; j<(i+1)*block_nr; j++) {
+			for (k=START_SET; k<(START_SET+line_nr); k++) {
+				ptr1 = (char **)&buf[j*WAY_SIZE+k*LINE_SIZE];
+				ptr2 = (char **)*ptr1;
+				*(ptr2+1) = (char*)(ptr1+1);
+			}
 		}
 
-		head[i] = &buf[(i+START_SET)*LINE_SIZE];
+		head[i] = &buf[i*block_nr*WAY_SIZE+START_SET*LINE_SIZE];
+
 	}
 } 
+
 
 void *clean(void *index_ptr) {
 	int *index = (int *)index_ptr;
@@ -69,9 +90,9 @@ void *clean(void *index_ptr) {
 		return NULL;
 	}
 	int i;
-	time_t end_time = time(NULL) + total_time;
-	printf("Begin Cleansing\n");
-	while(time(NULL) < end_time) {
+	time_t start_time, end_time;
+	start_time = time(NULL);
+	for (i=0; i<traversal; i++) {
 		__asm__("mov %0,%%r8\n\t"
 			"mov %%r8,%%rsi\n\t"
 			"xor %%eax, %%eax\n\t"
@@ -83,6 +104,8 @@ void *clean(void *index_ptr) {
 			:"r"(head[*index])
 			:"esi","r8","eax");
 	}
+	end_time = time(NULL);
+	printf("Time diff: %lld\n", (long long int)end_time-(long long int)start_time);
 }
 
 int main (int argc, char *argv[]) {
@@ -101,7 +124,7 @@ int main (int argc, char *argv[]) {
         }
 
 	num_thread = atoi(argv[1]);
-	total_time = atoi(argv[2]);
+	traversal = atoi(argv[2]);
 
 	head = (char **)calloc(num_thread, sizeof(char *));
 	initialize();
@@ -117,7 +140,7 @@ int main (int argc, char *argv[]) {
 
 	int i;
         for (i=0; i<num_thread; i++) {
-                cpu_id[i] = i*2;
+                cpu_id[i] = i;
                 pthread_create(&llc_thread[i], NULL, clean, &cpu_id[i]);
         }
 
