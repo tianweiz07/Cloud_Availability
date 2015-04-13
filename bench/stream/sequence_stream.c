@@ -19,15 +19,15 @@
 #include <sys/types.h>
 
 #define line_size 64
-#define size 32768
 
-time_t total_time;
+double total_time;
 int *array;
 int *target_array;
 int *index_array;
 
 int num_thread;
 int traversals;
+int size;
 
 uint64_t rdtsc(void) {
         uint64_t a, d;
@@ -38,7 +38,7 @@ uint64_t rdtsc(void) {
 int initial() {
 	int i, j;
 	uint64_t mem_size = size;
-        int fd = open("/root/nebula1", O_CREAT|O_RDWR, 0755);
+        int fd = open("/home/palms_admin/nebula1", O_CREAT|O_RDWR, 0755);
         if (fd < 0) {
                 printf("file open error!\n");
                 return 0;
@@ -47,11 +47,11 @@ int initial() {
 	
         if (array == MAP_FAILED) {
                 printf("map 1 error!\n");
-                unlink("/root/nebula1");
+                unlink("/home/palms_admin/nebula1");
                 return 0;
         }
 
-        int fd1 = open("/root/nebula2", O_CREAT|O_RDWR, 0755);
+        int fd1 = open("/home/palms_admin/nebula2", O_CREAT|O_RDWR, 0755);
         if (fd1 < 0) {
                 printf("file open error!\n");
                 return 0;
@@ -60,7 +60,7 @@ int initial() {
 
         if (target_array == MAP_FAILED) {
                 printf("map 2 error!\n");
-                unlink("/root/nebula2");
+                unlink("/home/palms_admin/nebula2");
                 return 0;
         }
 
@@ -88,19 +88,20 @@ void *stream_access(void *index_ptr) {
   }
 
   int i, j, k;
-  time_t start_time;
-  time_t end_time;
-  uint64_t start, end;
 
-  start_time = time(NULL);
+  struct timeval start_time;
+  struct timeval end_time;
+
+  gettimeofday(&start_time, NULL);
+  
   for (i=0; i < traversals; i++) {
     for (j=size/line_size/num_thread*((*index)); j < size/line_size/num_thread*((*index)+1); j++) {
       target_array[index_array[j]] = array[index_array[j]];
     }
   }
-  end_time = time(NULL);
-  total_time += end_time-start_time;
-  printf("Time diff: %lld\n", (long long int)end_time-(long long int)start_time);
+
+  gettimeofday(&end_time, NULL);
+  total_time += (end_time.tv_sec-start_time.tv_sec) + (end_time.tv_usec-start_time.tv_usec)/1000000.0;
 }
 
 int main(int argc, char *argv[]) {
@@ -108,10 +109,11 @@ int main(int argc, char *argv[]) {
 	int cpu_id[12];
 	pthread_t mem_thread[12];
 
-	initial();
-
 	num_thread = atoi(argv[1]);
 	traversals = atoi(argv[2]);
+	size = atoi(argv[3])/2;
+
+	initial();
 
 	int thread_index = num_thread;
 
@@ -130,6 +132,6 @@ int main(int argc, char *argv[]) {
 	        pthread_join(mem_thread[i], NULL);
 	}
 
-	printf("Total Time: %lld\n", (long long int)total_time);
+	printf("%f\n", total_time);
 	return 0;
 }
