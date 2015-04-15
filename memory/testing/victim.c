@@ -30,7 +30,7 @@ int cpu_index[12];
 int ROUND_NR;
 int thread_nr;
 
-time_t total_time;
+double total_time;
 
 void cache_flush(uint8_t *address) {
         __asm__ volatile("clflush (%0)": :"r"(address) :"memory");
@@ -49,17 +49,22 @@ void *mem_access(void *index_ptr) {
                 return NULL;
         }
 	int i, j;
-	time_t start_time,  end_time;
-	start_time = time(NULL);
+
+	struct timeval start_time;
+	struct timeval end_time;
+
+	gettimeofday(&start_time, NULL);
+
 	for (j=0; j<ROUND_NR; j++) {
 		for (i=0; i<SIZE/LINE_SIZE; i++){
 			next += mem_chunk[index_array[*index][i]];
 			cache_flush(&mem_chunk[index_array[*index][i]]);
 		}
 	}
-	end_time = time(NULL);
-	printf("Core %d: %lld\n", *index, (long long int)end_time-(long long int)start_time);
-	total_time += end_time - start_time;
+
+	gettimeofday(&end_time, NULL);
+
+	total_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec)/1000000.0;
 	return;
 }
 
@@ -72,7 +77,7 @@ uint64_t rdtsc(void) {
 
 int main(int argc, char* argv[]) {
 	mem_size = 1024*1024*1024;
-	int fd = open("/mnt/hugepages/nebula3", O_CREAT|O_RDWR, 0755);
+	int fd = open("/mnt/hugepages/nebula1", O_CREAT|O_RDWR, 0755);
 	
 	thread_nr = atoi(argv[1]);
 	ROUND_NR = atoi(argv[2]);
@@ -85,7 +90,7 @@ int main(int argc, char* argv[]) {
 
 	if (mem_chunk == MAP_FAILED) {
 		printf("map error!\n");
-		unlink("/mnt/hugepages/nebula3");
+		unlink("/mnt/hugepages/nebula1");
 		return 0;
 	}
 
@@ -145,23 +150,22 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	
-	total_time = 0;
+	total_time = 0.0;
 
 	int cpu_id[12];
 	pthread_t mem_thread[12];
 
 	for (i=0; i<thread_nr; i++) {
 		cpu_id[i] = i;
-		cpu_index[i] = i*2;
+		cpu_index[i] = i;
 		pthread_create(&mem_thread[i], NULL, mem_access, &cpu_id[i]);
 	}
 	
-	printf("Begin Execution: \n");
 	for (i=0; i<thread_nr; i++) {
 		pthread_join(mem_thread[i], NULL);
 	}
 
-	printf("Total Time: %lld\n", (long long int)total_time);
+	printf("%f\n", total_time);
 
 	return 0;
 }

@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
 	if (mem_chunk == MAP_FAILED) {
 		printf("map error!\n");
 		if (chunk_index == 1)
-			unlink("/mnt/hugepages/nebula3");
+			unlink("/mnt/hugepages/nebula1");
 		if (chunk_index == 2)
 			unlink("/mnt/hugepages/nebula2");
 		return 0;
@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
 
 	for (i=0; i<thread_nr; i++) {
 		cpu_id[i] = i;
-		cpu_index[i] = i*2+1;
+		cpu_index[i] = i;
 		pthread_create(&mem_thread[i], NULL, mem_access, &cpu_id[i]);
 	}
 	
