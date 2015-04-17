@@ -15,13 +15,25 @@
 #include <sys/types.h>
 
 #define line_size 64
-#define size 32768
+#define size 1048576
 
-int *data_array;
+char *data_array;
 
 int main (int argc, char *argv[]) {
 
-	data_array = (int *)malloc(size/line_size*sizeof(int));
+        int fd = open("nebula1", O_RDWR, 0755);
+        if (fd < 0) {
+                printf("file open error!\n");
+                return 0;
+        }
+        data_array = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0);
+
+        if (data_array == MAP_FAILED) {
+                printf("map 1 error!\n");
+                unlink("nebula1");
+                return 0;
+        }
+
 
         cpu_set_t set;
         CPU_ZERO(&set);
@@ -32,7 +44,7 @@ int main (int argc, char *argv[]) {
         }
 
 	int *read_address;
-	read_address = &data_array[line_size-1];
+	read_address = (int *)(data_array + line_size - 1);
 	int value = 0x0;
 	int index;
 
