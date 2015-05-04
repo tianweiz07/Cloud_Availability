@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
             if (encrypt_len == -1)
                 return 0;
         }
-
+        free(encrypt);
         gettimeofday(&end_time, NULL);
         total_time = (end_time.tv_sec-start_time.tv_sec) + (end_time.tv_usec-start_time.tv_usec)/1000000.0;
         printf("%f\n", total_time);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     BIO_free_all(pri);
     free(pri_key);
     free(pub_key);
-    free(encrypt);
+
 
     return 0;
 }
