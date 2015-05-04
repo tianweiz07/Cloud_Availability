@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
             encrypt_len = RSA_public_encrypt(strlen(msg)+1, (unsigned char*)msg, (unsigned char*)encrypt, keypair, RSA_PKCS1_OAEP_PADDING);
             if (encrypt_len == -1)
                 return 0;
+            free(encrypt);
         }
-        free(encrypt);
         gettimeofday(&end_time, NULL);
         total_time = (end_time.tv_sec-start_time.tv_sec) + (end_time.tv_usec-start_time.tv_usec)/1000000.0;
         printf("%f\n", total_time);
