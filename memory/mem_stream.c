@@ -51,7 +51,7 @@ int initial() {
                 return 0;
         }
 
-        int fd1 = open("/mnt/hugepages/nebula2", O_CREAT|O_RDWR, 0755);
+        int fd1 = open("/mnt/hugepages/nebula3", O_CREAT|O_RDWR, 0755);
         if (fd1 < 0) {
                 printf("file open error!\n");
                 return 0;
@@ -60,7 +60,7 @@ int initial() {
 
         if (target_array == MAP_FAILED) {
                 printf("map 2 error!\n");
-                unlink("/mnt/hugepages/nebula2");
+                unlink("/mnt/hugepages/nebula3");
                 return 0;
         }
 
@@ -81,7 +81,7 @@ void *stream_access(void *index_ptr) {
 	int *index = (int *)index_ptr;
 	cpu_set_t set;
 	CPU_ZERO(&set);
-	CPU_SET(*index, &set);
+	CPU_SET((*index)*2, &set);
 	if (sched_setaffinity(syscall(SYS_gettid), sizeof(cpu_set_t), &set)) {
 		fprintf(stderr, "Error set affinity\n");
 		return NULL;
@@ -91,11 +91,28 @@ void *stream_access(void *index_ptr) {
 	time_t start_time;
 
 	start_time = time(NULL);
-	while (time(NULL) - start_time < total_time) {
-		for (j=size/line_size/num_thread*((*index)); j < size/line_size/num_thread*((*index)+1); j++) {
-			target_array[index_array[j]] = array[index_array[j]];
+
+	int start_index, end_index;
+
+ 	if ((*index)<(num_thread/2)) {
+		start_index = size/line_size/(num_thread/2)*(*index);
+		end_index = size/line_size/(num_thread/2)*(*index+1)-1;
+		while (time(NULL) - start_time < total_time) {
+			for (j=start_index; j<end_index; j++) {
+				array[index_array[j+1]] += array[index_array[j]];
+			}
 		}
 	}
+	else{
+		start_index = size/line_size/(num_thread/2)*(*index-num_thread/2);
+		end_index = size/line_size/(num_thread/2)*(*index-num_thread/2+1)-1;
+		while (time(NULL) - start_time < total_time) {
+			for (j=start_index; j<end_index; j++) {
+				target_array[index_array[j+1]] += target_array[index_array[j]];
+			}
+		}
+	}
+
 	return;
 }
 
