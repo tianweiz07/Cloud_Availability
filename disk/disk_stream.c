@@ -69,6 +69,7 @@ int main(int argc, char **argv)
 		register int moved;
 
 		if (gotcnt && count-- <= 0) {
+			fsync(out);
 			exit(0);
 		}
 
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
 			perror("read");
 		}
 		if (moved <= 0) {
+			fsync(out);
 			exit(0);
 		}
 
@@ -96,6 +98,7 @@ int main(int argc, char **argv)
 			}
 			if (moved2 != moved) {
 				fprintf(stderr, "write: wanted=%d got=%d\n", moved, moved2);
+				fsync(out);
 				exit(0);
 			}
 
