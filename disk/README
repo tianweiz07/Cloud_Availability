@@ -1,0 +1,23 @@
+Configure Network Attack Storage for KVM:
+
+server:
+	sudo apt-get install nfs-kernel-server portmap
+	sudo chown nobody:nogroup /var/lib/libvirt/images
+	modify /etc/exports:
+		/var/lib/libvirt/images        nfs_client_ip(rw,sync,no_subtree_check,no_root_squash)
+	exportfs -a
+	sudo service nfs-kernel-server start
+
+client:
+	sudo apt-get install nfs-common portmap
+	mount nfs_server_ip:/var/lib/libvirt/images /var/lib/libvirt/images
+	df -h
+
+	umount the network disk:
+		umount nfs_server_ip:/var/lib/libvirt/images
+
+
+
+Run the disk stream program:
+
+./disk_stream 1048576 100 if=internal of=/home/palms_admin/testing
