@@ -1,0 +1,2 @@
+To run network UDP attack:
+	./network_flooding -z 100 target_ip_address
