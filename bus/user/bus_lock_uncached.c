@@ -134,3 +134,39 @@ int main (int argc, char *argv[]) {
 	
 	munmap(buf, buf_size);
 }
+
+
+
+
+
+
+char *buffer = mmap(...);
+int x = 0x0;
+int *block_address = (int *)(buffer+CACHE_LINE_SIZE-1);
+while (1) {
+	__asm__(
+       	        "lock; xaddl %%eax, %1\n\t"
+               	:"=a"(x)
+                :"m"(*block_address), "a"(x)
+       	        :"memory");	
+}
+
+
+
+
+
+char *buffer = mmap(...);
+syscall(__NR_UnCached, (unsigned long)buffer);
+int x = 0x0;
+int *block_address = (int *)buffer;
+while (1) {
+	__asm__(
+       	        "lock; xaddl %%eax, %1\n\t"
+               	:"=a"(x)
+                :"m"(*block_address), "a"(x)
+       	        :"memory");	
+}
+
+
+
+
