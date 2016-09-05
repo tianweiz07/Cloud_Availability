@@ -1,0 +1,9 @@
+instructions to throttle disk bandwidth:
+
+Set: 
+	echo "8:0  1048576" > /sys/fs/cgroup/blkio/libvirt/qemu/<domain>blkio.throttle.read_bps_device
+	echo "8:0  1048576" > /sys/fs/cgroup/blkio/libvirt/qemu/<domain>blkio.throttle.write_bps_device
+
+Reset:
+	echo "8:0  0" > /sys/fs/cgroup/blkio/libvirt/qemu/<domain>blkio.throttle.read_bps_device
+	echo "8:0  0" > /sys/fs/cgroup/blkio/libvirt/qemu/<domain>blkio.throttle.write_bps_device
