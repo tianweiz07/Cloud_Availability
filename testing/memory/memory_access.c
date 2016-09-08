@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
 
     for (i=0; i<count; i++) {
-        int size = SIZE/10*(rand()%10);
+        int size = SIZE/2 + SIZE/20*(rand()%10);
         uint64_t start = rdtsc();
         for (j=0; j<size/sizeof(int); j+= CACHE_LINE_SIZE/sizeof(int))
             array[j] ++;

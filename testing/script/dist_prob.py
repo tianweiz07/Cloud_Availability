@@ -9,8 +9,8 @@ data = open(output, 'r')
 activities = data.readlines()
 data.close()
 
-_range = 3000000
-_bin = 10
+_range = 10000
+_bin = 20
 _num = 0
 _max = 0
 
@@ -21,6 +21,9 @@ for value_str in activities:
     index = (int)(value*_bin/_range)
     if index < _bin:
         val[index] += 1
+        _num += 1
+    else:
+        val[-1] += 1
         _num += 1
     if _max < value:
         _max = value

@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
             break;
         }
 
-        int bsize = Bsize/10*(rand()%10);
+        int bsize = Bsize/2 + Bsize/20*(rand()%10);
 
         if (out >= 0) {
             int moved2;
