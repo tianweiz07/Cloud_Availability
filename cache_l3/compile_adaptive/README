@@ -1,0 +1,47 @@
+Try another way for adaptive attacks:
+
+1. For the testing program, compile it with the debug and gcov flag:
+    gcc -g -fprofile-arcs -ftest-coverage ....
+    For SPEC2006, add such flag in config/test.cfg: COPTIMIZE and CXXOPTIMIZE
+
+2. Run the testing program. The source files will generate .gcno and .gcda. In the source folder:
+    $ python process.py $(folder_dir)
+   This counts the number of lines from the least to the most
+
+3. Find the most frequent lines, use gdb to find the virtual address
+    $ gdb $(binary)
+    $ info line $(source_file:line_num)
+
+4. Get the possible cache set index offset:
+    set_index_offset = (virt_addr % (1<<12) / (1<<6))
+
+5. Search the conflict cache sets:
+    $ ./search.sh $(set_index_offset)
+
+6. Run the testing program, profile the cache sets and find the contention cache sets:
+    $ ./profile.sh $(set_index_offset)
+
+7. Attack the cache sets using one threads or four threads:
+    $ ./clean_cache_spec1 $(set_index) $(slice_index)
+    $ ./clean_cache_spec4 $(set_index) $(slice_index)
+
+
+Results:
+Prime-Probe technique seems much more ineffective than Flush-Reload. There are two reasons:
+The first one is the Flush-Reload does not need to search the possible cache sets. For 
+Prime-Probe, if the interested code are paged out and then page in, then its physical address
+may be changed, so we have to identify the cache sets again. For small program, the interested
+code does not page out and its physical address/cache sets are not changed. For large program,
+e.g., SPEC2006, they change for each run. So we have to profile and attack within the same run.
+
+The second one is the Flush-Reload has very short access time: ~500 cycles for each clflush.
+For Prime-Probe, the time to evict a cache line is ~3000 cycles, as we have to access all the
+cache lines (20) within the cache set. This slow cleaning frequency makes the attack less
+effective.
+
+We test the attack using three different ways. The first one is to identify one interested cache
+set, and use one thread to clean this set. The second one is to identify one interested cache set
+and use four threads to clean this set, each thread accesses 1/4 cache set. The third one is to
+identify four interested cache sets, and use four threads to clean these sets, each thread cleans
+one set. We found all these attacks have ineffective results: only introducing around 20% penalty
+to the testing program's performacne..
